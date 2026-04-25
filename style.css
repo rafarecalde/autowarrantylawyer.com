@@ -337,6 +337,17 @@ strong { font-weight: 700; color: var(--ink); }
   line-height: 1.5;
 }
 
+.form-error {
+  background: #FFF4E5;
+  border: 1.5px solid #F5A623;
+  color: #6B4A00;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+
 @media (max-width: 880px) {
   .hero-grid { grid-template-columns: 1fr; gap: 40px; }
   .hero { padding: 56px 0 72px; }
@@ -357,6 +368,7 @@ strong { font-weight: 700; color: var(--ink); }
   gap: 24px;
   text-align: center;
 }
+.trustbar-inner.trustbar-3 { grid-template-columns: repeat(3, 1fr); }
 .trustbar-item strong {
   display: block;
   color: var(--amber);

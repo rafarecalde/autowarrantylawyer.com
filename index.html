@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Florida Lemon Law Attorney | Auto Warranty Lawyer — Luxury &amp; Electric Vehicle Buyback</title>
-  <meta name="description" content="Florida Lemon Law attorney for owners of new luxury and electric vehicles. We force manufacturers to buy back defective cars under Fla. Stat. ch. 681. No recovery, no fee — manufacturer pays attorney fees. Serving all of Florida.">
+  <meta name="description" content="Florida Lemon Law attorney for owners of new luxury and electric vehicles. We help Florida owners pursue manufacturer buyback or replacement under Fla. Stat. ch. 681 when a new vehicle can't be repaired. Contingency: no recovery, no fee.">
   <meta name="keywords" content="Florida lemon law attorney, lemon law lawyer Florida, Tesla lemon law, Rivian lemon law, BMW lemon law, Mercedes lemon law, Porsche lemon law, manufacturer buyback Florida, defective new car attorney">
   <link rel="canonical" href="https://autowarrantylawyer.com/">
 
   <!-- Open Graph -->
   <meta property="og:title" content="Florida Lemon Law Attorney — Luxury &amp; Electric Vehicle Buyback">
-  <meta property="og:description" content="Force the manufacturer to buy back your defective new luxury or electric vehicle. Florida Lemon Law attorney with a perfect record. No recovery, no fee.">
+  <meta property="og:description" content="When your new luxury or electric vehicle can't be fixed, Florida's Lemon Law may require a buyback or replacement. Contingency representation — no recovery, no fee.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://autowarrantylawyer.com/">
   <meta property="og:site_name" content="Auto Warranty Lawyer">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Florida Lemon Law Attorney — Luxury &amp; Electric Vehicle Buyback">
-  <meta name="twitter:description" content="Force the manufacturer to buy back your defective new luxury or electric vehicle. No recovery, no fee.">
+  <meta name="twitter:description" content="When your new luxury or electric vehicle can't be fixed, Florida's Lemon Law may require a buyback or replacement. No recovery, no fee.">
 
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
@@ -57,7 +57,7 @@
     "@type": "FAQPage",
     "mainEntity": [
       {"@type":"Question","name":"How do I know if my car qualifies under the Florida Lemon Law?","acceptedAnswer":{"@type":"Answer","text":"Florida's Lemon Law (Fla. Stat. ch. 681) applies to new motor vehicles purchased or leased in Florida, within 24 months of original delivery, where a substantial defect has not been repaired after a reasonable number of attempts. A defect is presumed substantial if the manufacturer has had three or more repair attempts for the same issue, or if the vehicle has been out of service for 15 or more cumulative days."}},
-      {"@type":"Question","name":"What does it cost to hire a Florida lemon law attorney?","acceptedAnswer":{"@type":"Answer","text":"Nothing out of pocket. We handle Florida Lemon Law cases on contingency. Under Fla. Stat. § 681.112(2), prevailing consumers are entitled to have their reasonable attorney fees paid by the manufacturer. If we do not recover for you, you owe us nothing."}},
+      {"@type":"Question","name":"What does it cost to hire a Florida lemon law attorney?","acceptedAnswer":{"@type":"Answer","text":"Nothing out of pocket. We handle Florida Lemon Law cases on contingency: if we do not recover for you, you owe us nothing — no fee. The specific fee arrangement is set out in writing before any engagement begins."}},
       {"@type":"Question","name":"What can I recover in a Florida Lemon Law case?","acceptedAnswer":{"@type":"Answer","text":"Florida law requires the manufacturer to either replace your vehicle with a comparable new vehicle or repurchase it — refunding the full purchase price plus collateral charges (tax, title, registration, finance charges), minus a reasonable offset for the miles you drove before the defect first appeared."}},
       {"@type":"Question","name":"How long do I have to file a Florida Lemon Law claim?","acceptedAnswer":{"@type":"Answer","text":"The Florida Lemon Law Rights Period is 24 months from the date of original delivery to the first consumer. Claims must generally be filed within this window. Time is critical — contact an attorney as soon as you believe your vehicle may qualify."}}
     ]
@@ -99,17 +99,13 @@
       <div class="hero-grid">
         <div class="hero-content">
           <span class="hero-kicker">Florida Lemon Law · New Vehicles</span>
-          <h1>Your new car keeps breaking. <span class="hl">Make the manufacturer buy it back.</span></h1>
-          <p class="hero-sub">Florida Lemon Law attorney for owners of defective new luxury and electric vehicles still within the 24-month Lemon Law Rights Period. We force the manufacturer to repurchase or replace your vehicle — and they pay our fees.</p>
+          <h1>Your new car keeps breaking. <span class="hl">Florida's Lemon Law may require a buyback or replacement.</span></h1>
+          <p class="hero-sub">Florida Lemon Law attorney for owners of new luxury and electric vehicles still within the 24-month Lemon Law Rights Period. We help you pursue a manufacturer buyback or replacement under Fla. Stat. ch. 681. Contingency only — no recovery, no fee.</p>
           <div class="hero-cta">
             <a href="#case-review" class="btn btn-primary btn-lg">Get a Free Case Review</a>
             <a href="tel:+13057929100" class="btn btn-outline-light btn-lg">Call (305) 792-9100</a>
           </div>
           <div class="hero-proof">
-            <div class="hero-proof-item">
-              <strong>4&ndash;0</strong>
-              <span>Florida Lemon Record</span>
-            </div>
             <div class="hero-proof-item">
               <strong>$0</strong>
               <span>Out-of-Pocket Fees</span>
@@ -118,6 +114,10 @@
               <strong>24 mo.</strong>
               <span>FL Lemon Law Window</span>
             </div>
+            <div class="hero-proof-item">
+              <strong>FL Only</strong>
+              <span>Focused Practice</span>
+            </div>
           </div>
         </div>
 
@@ -125,8 +125,8 @@
         <div class="hero-form" id="case-review">
           <h3>Free Case Review</h3>
           <p class="form-lead">Tell us about your vehicle. We'll respond within one business day.</p>
-          <form action="https://formspree.io/f/mqegejrg" method="POST">
-            <input type="hidden" name="_subject" value="Auto Warranty Lawyer — Case Review">
+          <form action="https://formspree.io/f/mqegejrg" method="POST" id="hero-form" data-lemon-check>
+            <input type="hidden" name="_subject" value="Auto Warranty Lawyer — Case Review (Hero Form)">
             <div class="form-group">
               <label for="name">Your Name</label>
               <input type="text" id="name" name="name" required>
@@ -144,11 +144,16 @@
               <input type="text" id="vehicle" name="vehicle" placeholder="e.g. 2025 Tesla Model S" required>
             </div>
             <div class="form-group">
+              <label for="delivery_date">Original Delivery Date</label>
+              <input type="month" id="delivery_date" name="delivery_date" required data-lemon-date>
+            </div>
+            <div class="form-group">
               <label for="issue">What's wrong with it?</label>
               <textarea id="issue" name="issue" rows="3" placeholder="Repair attempts, days in shop, symptoms..." required></textarea>
             </div>
+            <div class="form-error" hidden></div>
             <button type="submit" class="btn btn-primary btn-block">Send My Case for Review</button>
-            <p class="form-note">Submitting this form does not create an attorney-client relationship. All information is kept confidential.</p>
+            <p class="form-note">Submitting this form does not create an attorney-client relationship. All information is kept confidential. We accept Florida Lemon Law cases only for vehicles within the 24-month Lemon Law Rights Period.</p>
           </form>
         </div>
       </div>
@@ -158,22 +163,18 @@
   <!-- Trust Bar -->
   <div class="trustbar">
     <div class="container">
-      <div class="trustbar-inner">
+      <div class="trustbar-inner trustbar-3">
         <div class="trustbar-item">
           <strong>Florida Only</strong>
           <span>Focused Practice</span>
         </div>
         <div class="trustbar-item">
-          <strong>Perfect Record</strong>
-          <span>4&ndash;0 on Lemon Cases</span>
+          <strong>New Vehicles</strong>
+          <span>Within the 24-Month Window</span>
         </div>
         <div class="trustbar-item">
           <strong>Contingency</strong>
           <span>No Recovery, No Fee</span>
-        </div>
-        <div class="trustbar-item">
-          <strong>Fee-Shifting</strong>
-          <span>Manufacturer Pays Attorney Fees</span>
         </div>
       </div>
     </div>
@@ -263,7 +264,7 @@
         <div class="step">
           <div class="step-num">3</div>
           <h3>You Get Paid</h3>
-          <p>Florida law requires the manufacturer to refund the purchase price plus collateral charges, or replace the vehicle. We collect our fee from the manufacturer under the fee-shifting statute — not from your recovery.</p>
+          <p>If your case prevails, Florida law calls for the manufacturer to refund the purchase price plus collateral charges, or to replace the vehicle. We work on contingency — if we don't recover for you, you pay nothing.</p>
         </div>
       </div>
     </div>
@@ -275,8 +276,8 @@
       <div class="promise-inner">
         <p class="promise-label">Our Fee Promise</p>
         <h2>No Recovery, No Fee. Ever.</h2>
-        <p>Florida Lemon Law cases are different from most consumer claims. Under Fla. Stat. § 681.112(2), when a consumer prevails, the manufacturer is required to pay the consumer's reasonable attorney fees and costs — <strong>on top of</strong> the buyback or replacement.</p>
-        <p>That means we take your case on pure contingency. You pay nothing up front, nothing during the case, and nothing out of your recovery if we win. If we don't win, you owe us nothing.</p>
+        <p>We take Florida Lemon Law cases on pure contingency. You pay nothing up front and nothing during the case. If we don't recover for you, you owe us nothing — no fee.</p>
+        <p>Florida law (Fla. Stat. § 681.112(2)) also provides that a prevailing consumer may recover reasonable attorney fees and costs from the manufacturer. The specific allocation of fees in any individual case depends on the outcome and how the matter resolves, and we will discuss our fee arrangement with you in writing before any engagement begins.</p>
         <a href="#case-review" class="btn btn-primary btn-lg">Start My Free Case Review</a>
         <p class="promise-fine">Costs may apply in rare circumstances. We will discuss all fee arrangements with you in writing before any engagement begins.</p>
       </div>
@@ -298,7 +299,7 @@
         <div class="faq-item">
           <button class="faq-q">What does it cost to hire a Florida Lemon Law attorney?</button>
           <div class="faq-a"><div class="faq-a-inner">
-            Nothing out of pocket. We handle Florida Lemon Law cases on contingency. Under Fla. Stat. § 681.112(2), prevailing consumers are entitled to have their reasonable attorney fees paid by the manufacturer. If we do not recover for you, you owe us nothing.
+            Nothing out of pocket. We handle Florida Lemon Law cases on contingency: if we do not recover for you, you owe us nothing — no fee. Florida law also provides that a prevailing consumer may recover reasonable attorney fees and costs from the manufacturer (Fla. Stat. § 681.112(2)); the specific allocation in any individual case depends on the outcome. We will set out the fee arrangement in writing before any engagement begins.
           </div></div>
         </div>
         <div class="faq-item">
@@ -422,6 +423,30 @@
       q.addEventListener('click', () => {
         const item = q.parentElement;
         item.classList.toggle('open');
+      });
+    });
+
+    // 24-month Lemon Law window validation
+    document.querySelectorAll('form[data-lemon-check]').forEach(form => {
+      form.addEventListener('submit', e => {
+        const input = form.querySelector('[data-lemon-date]');
+        const errBox = form.querySelector('.form-error');
+        if (!input || !input.value) return;
+        const [y, m] = input.value.split('-').map(Number);
+        const delivery = new Date(y, m - 1, 1);
+        const now = new Date();
+        const months = (now.getFullYear() - delivery.getFullYear()) * 12 + (now.getMonth() - delivery.getMonth());
+        if (months > 24) {
+          e.preventDefault();
+          if (errBox) {
+            errBox.hidden = false;
+            errBox.textContent = "Florida's Lemon Law applies to defects reported within 24 months of original delivery to the first owner. Based on the delivery date you entered, this vehicle appears to be outside that window. Unfortunately we are unable to take cases outside the Florida Lemon Law Rights Period.";
+            errBox.scrollIntoView({behavior: 'smooth', block: 'center'});
+          }
+        } else if (errBox) {
+          errBox.hidden = true;
+          errBox.textContent = '';
+        }
       });
     });
 

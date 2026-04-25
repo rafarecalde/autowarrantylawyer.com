@@ -62,8 +62,9 @@
   <article class="article-body">
     <div class="container">
       <div class="cr-wrap">
-        <form action="https://formspree.io/f/mqegejrg" method="POST">
-          <input type="hidden" name="_subject" value="Auto Warranty Lawyer — Case Review">
+        <form action="https://formspree.io/f/mqegejrg" method="POST" id="case-review-form" data-lemon-check>
+          <input type="hidden" name="_subject" value="Auto Warranty Lawyer — Case Review (Long Form)">
+          <div class="form-error" hidden style="margin-bottom: 18px;"></div>
 
           <h3 style="margin-top:0;margin-bottom:20px;">Your Contact Information</h3>
           <div class="cr-row">
@@ -124,7 +125,7 @@
           </div>
           <div class="form-group">
             <label for="purchase_date">Original Delivery Date (to first owner)</label>
-            <input type="text" id="purchase_date" name="purchase_date" placeholder="approximate month/year">
+            <input type="month" id="purchase_date" name="purchase_date" required data-lemon-date>
           </div>
           <div class="form-group">
             <label for="dealer">Selling Florida Dealer</label>
@@ -218,6 +219,30 @@
     const nav = document.getElementById('nav');
     window.addEventListener('scroll', () => {
       nav.classList.toggle('scrolled', window.scrollY > 20);
+    });
+
+    // 24-month Lemon Law window validation
+    document.querySelectorAll('form[data-lemon-check]').forEach(form => {
+      form.addEventListener('submit', e => {
+        const input = form.querySelector('[data-lemon-date]');
+        const errBox = form.querySelector('.form-error');
+        if (!input || !input.value) return;
+        const [y, m] = input.value.split('-').map(Number);
+        const delivery = new Date(y, m - 1, 1);
+        const now = new Date();
+        const months = (now.getFullYear() - delivery.getFullYear()) * 12 + (now.getMonth() - delivery.getMonth());
+        if (months > 24) {
+          e.preventDefault();
+          if (errBox) {
+            errBox.hidden = false;
+            errBox.textContent = "Florida's Lemon Law applies to defects reported within 24 months of original delivery to the first owner. Based on the delivery date you entered, this vehicle appears to be outside that window. Unfortunately we are unable to take cases outside the Florida Lemon Law Rights Period.";
+            errBox.scrollIntoView({behavior: 'smooth', block: 'center'});
+          }
+        } else if (errBox) {
+          errBox.hidden = true;
+          errBox.textContent = '';
+        }
+      });
     });
   </script>
 </body>
