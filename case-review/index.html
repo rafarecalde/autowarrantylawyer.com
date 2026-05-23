@@ -124,8 +124,13 @@
             </select>
           </div>
           <div class="form-group">
-            <label for="purchase_date">Original Delivery Date (to first owner)</label>
-            <input type="month" id="purchase_date" name="purchase_date" required data-lemon-date>
+            <label for="purchase_date">Was the vehicle delivered to its first owner within the last 24 months?</label>
+            <select id="purchase_date" name="purchase_date" required data-lemon-date>
+              <option value="">Select...</option>
+              <option value="Yes — within the last 24 months">Yes — within the last 24 months</option>
+              <option value="Not sure">Not sure</option>
+              <option value="No — more than 24 months ago">No — more than 24 months ago</option>
+            </select>
           </div>
           <div class="form-group">
             <label for="dealer">Selling Florida Dealer</label>
@@ -227,15 +232,11 @@
         const input = form.querySelector('[data-lemon-date]');
         const errBox = form.querySelector('.form-error');
         if (!input || !input.value) return;
-        const [y, m] = input.value.split('-').map(Number);
-        const delivery = new Date(y, m - 1, 1);
-        const now = new Date();
-        const months = (now.getFullYear() - delivery.getFullYear()) * 12 + (now.getMonth() - delivery.getMonth());
-        if (months > 24) {
+        if (input.value === 'No — more than 24 months ago') {
           e.preventDefault();
           if (errBox) {
             errBox.hidden = false;
-            errBox.textContent = "Florida's Lemon Law applies to defects reported within 24 months of original delivery to the first owner. Based on the delivery date you entered, this vehicle appears to be outside that window. Unfortunately we are unable to take cases outside the Florida Lemon Law Rights Period.";
+            errBox.textContent = "Florida's Lemon Law applies to vehicles within 24 months of original delivery to the first owner. Unfortunately we are unable to take cases outside the Florida Lemon Law Rights Period.";
             errBox.scrollIntoView({behavior: 'smooth', block: 'center'});
           }
         } else if (errBox) {
