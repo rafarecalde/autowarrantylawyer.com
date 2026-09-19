@@ -74,6 +74,8 @@ assert('docs_send_method is Google Form Drive upload', src.indexOf("Google Form 
 assert('Google Form opens in a new tab', src.indexOf('target="_blank"') !== -1 && src.indexOf('data-gform-cta') !== -1, true);
 assert('notes Google account requirement', src.indexOf('signed into a Google account') !== -1, true);
 assert('notes files go to firm Drive only', src.indexOf('Files go to the firm’s Google Drive only') !== -1, true);
+assert('describes one Upload your packet field', src.indexOf('one file field') !== -1 && src.indexOf('Upload your packet') !== -1, true);
+assert('does not describe four separate upload fields', !/four separate|four file fields|four uploads|separate upload fields/i.test(src), true);
 assert('does not claim files attached to Formspree', src.indexOf('none — not attached to Formspree') !== -1, true);
 assert('Formspree docs field says sent to Google Form', src.indexOf('Client was sent to Google Form for packet upload') !== -1, true);
 assert('has Google Form opened confirmation checkbox', src.indexOf('name="docs_form_opened"') !== -1 && src.indexOf('data-gform-ack') !== -1, true);

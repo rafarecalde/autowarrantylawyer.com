@@ -245,7 +245,7 @@
         '</div>' +
 
         '<div class="intake-panel" data-panel="4" hidden>' +
-          '<p class="intake-docs-lead">To finish the evaluation, send this packet:</p>' +
+          '<p class="intake-docs-lead">Include these documents in one upload (“Upload your packet”):</p>' +
           '<ul class="intake-doc-list">' +
             '<li>Driver’s license</li>' +
             '<li>Vehicle registration</li>' +
@@ -253,9 +253,9 @@
             '<li>Repair tickets / repair orders</li>' +
           '</ul>' +
           '<p class="intake-hint">This step is the packet only — not a signature. After the documents are in, we’ll explain fees. If you then reply “I want to proceed,” we’ll send the engagement agreement for electronic signature.</p>' +
-          '<p class="intake-docs-secure">Upload the packet on the firm’s Google Form. Google requires you to be signed into a Google account to attach files. Files go to the firm’s Google Drive only — they are not attached to this case-review email.</p>' +
-          googleFormCta('Open secure upload form') +
-          '<p class="intake-gform-note">The form opens in a new tab. Come back here afterward and submit your case review so we have your contact details.</p>' +
+          '<p class="intake-docs-secure">The Google Form has one file field. Attach the whole packet there. Google requires you to be signed into a Google account to attach files. Files go to the firm’s Google Drive only — they are not attached to this case-review email.</p>' +
+          googleFormCta('Upload your packet') +
+          '<p class="intake-gform-note">The form opens in a new tab. Attach everything in that one field, then come back here and submit your case review so we have your contact details.</p>' +
           '<div class="form-group">' +
             '<label class="intake-check">' +
               '<input type="checkbox" name="docs_form_opened" value="Opened or will complete the Google Form" data-gform-ack required>' +
@@ -307,9 +307,9 @@
         '<h3>Your case review is in</h3>' +
         '<p>' + greeting + '</p>' +
         '<p>Thank you for contacting Recalde Law Firm about your ' + escapeHtml(vehicle) + '.</p>' +
-        '<p>Your contact details were sent to the firm. Files are not attached to that email. If you have not finished the Google Form yet, upload the packet there now — files go to the firm’s Google Drive only:</p>' +
-        '<p>' + googleFormCta('Open secure upload form') + '</p>' +
-        '<p>We still need this packet to finish the evaluation:</p>' +
+        '<p>Your contact details were sent to the firm. Files are not attached to that email. If you have not finished the Google Form yet, attach the whole packet in the one “Upload your packet” field — files go to the firm’s Google Drive only:</p>' +
+        '<p>' + googleFormCta('Upload your packet') + '</p>' +
+        '<p>Include these documents in that one upload:</p>' +
         '<ul class="intake-doc-list">' +
           '<li>Driver’s license</li>' +
           '<li>Vehicle registration</li>' +
@@ -407,7 +407,7 @@
     var ack = form.querySelector('input[name="docs_packet_ack"]');
     return [
       'Required packet: driver’s license; vehicle registration; lease or purchase contract; repair tickets / repair orders',
-      'Send method: ' + DOCS_SEND_METHOD,
+      'Send method: ' + DOCS_SEND_METHOD + ' — one multi-file field “Upload your packet”',
       'Files: none attached to this Formspree email. Client was sent to Google Form for packet upload to the firm’s Drive: ' + DOCS_GOOGLE_FORM,
       'Opened or will complete Google Form: ' + (openedGoogleForm(form) ? 'yes' : 'no'),
       'Packet ack: ' + (ack && ack.checked ? 'yes' : 'no')
@@ -536,7 +536,7 @@
       'A few questions, starting with the original delivery date. If you’re in the 24-month window, we’ll ask for the document packet next.',
       'Next: the state of purchase or lease, VIN, and whether this was a purchase or a lease.',
       'How many repair visits for the same problem, and how long the vehicle was out of service.',
-      'Upload the document packet on the firm’s Google Form so we can finish the evaluation. This step is not a signature.'
+      'Include your documents in one Google Form upload (“Upload your packet”) so we can finish the evaluation. This step is not a signature.'
     ];
 
     var unknown = form.querySelector('[data-unknown-date]');
@@ -625,7 +625,7 @@
         if (status === 'out_of_window') {
           nextStepInput.value = 'Declined — do not request documents or send engagement.';
         } else {
-          nextStepInput.value = 'Await FULL document packet via Google Form / Drive (driver’s license, vehicle registration, lease or purchase contract, repair tickets). Client was sent to the Google Form to upload. This Formspree email has no file attachments. Do NOT send engagement or fee-to-sign until the packet is in. Then explain fees; if they reply “I want to proceed”, send engagement for e-sign (TODO: no e-sign/portal in this repo — use existing recalde-portal or manual send). Signed engagement → open file.';
+          nextStepInput.value = 'Await FULL document packet via Google Form / Drive — one multi-file field “Upload your packet” (driver’s license, vehicle registration, lease or purchase contract, repair tickets). Client was sent to the Google Form to upload. This Formspree email has no file attachments. Do NOT send engagement or fee-to-sign until the packet is in. Then explain fees; if they reply “I want to proceed”, send engagement for e-sign (TODO: no e-sign/portal in this repo — use existing recalde-portal or manual send). Signed engagement → open file.';
         }
       }
       if (subjectInput) subjectInput.value = subjectFor(status, subject);
