@@ -70,7 +70,10 @@ assert(
   src.indexOf('https://docs.google.com/forms/d/e/1FAIpQLSei5FtsiCdXDqo9vn8Meu4mwtVosAs9VSMWX0OKjUOjwVWnKA/viewform') !== -1,
   true
 );
-assert('docs_send_method is optional Google Form upload', src.indexOf('Google Form offered (optional upload-only Drive)') !== -1, true);
+assert('docs_send_method is optional Google Form', src.indexOf('Google Form offered (optional Drive)') !== -1, true);
+assert('awkward upload-only sentence is not in intake.js', src.indexOf('The Google Form is upload only — no name, email, or vehicle questions') === -1, true);
+assert('awkward upload-only fragment is not in intake.js', src.indexOf('upload only — no name, email, or vehicle questions') === -1, true);
+assert('Formspree _subject is unique per lead', src.indexOf('function uniqueLeadSubject') !== -1 && src.indexOf("data.set('_subject'") !== -1 && src.indexOf('name="lead_id"') !== -1, true);
 assert('Google Form opens in a new tab', src.indexOf('target="_blank"') !== -1 && src.indexOf('data-gform-cta') !== -1, true);
 assert('three on-site steps', src.indexOf('var total = 3') !== -1 && src.indexOf('data-panel="4"') === -1, true);
 assert('step 1 label is delivery date', src.indexOf('Step 1 of 3 — Delivery date') !== -1, true);
@@ -99,7 +102,7 @@ assert('pre-submit form has no upload-first copy', formHtmlFn.indexOf('Uploading
 var ctaFn = extract('googleFormCta');
 assert('success screen primary CTA is Upload your packet', successFn.indexOf("googleFormCta('Upload your packet')") !== -1, true);
 assert('Google Form CTA helper uses data-gform-cta', ctaFn.indexOf('data-gform-cta') !== -1, true);
-assert('success screen lists packet docs', successFn.indexOf('Driver’s license') !== -1 && successFn.indexOf('Vehicle registration') !== -1 && successFn.indexOf('Lease or purchase contract') !== -1 && successFn.indexOf('Repair tickets') !== -1, true);
+assert('success screen names packet docs', successFn.indexOf('driver’s license') !== -1 && successFn.indexOf('registration') !== -1 && successFn.indexOf('lease or purchase contract') !== -1 && successFn.indexOf('repair tickets') !== -1, true);
 assert('success screen says files go to the firm securely', successFn.indexOf('Files go to the firm securely.') !== -1, true);
 assert('success screen says upload is optional', successFn.indexOf('Upload is optional.') !== -1, true);
 assert('success screen offers leave without upload', successFn.indexOf('Back to home') !== -1, true);

@@ -27,7 +27,7 @@
 
   var FORMSPREE_ENDPOINT = 'https://formspree.io/f/mqegejrg';
   var DOCS_GOOGLE_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSei5FtsiCdXDqo9vn8Meu4mwtVosAs9VSMWX0OKjUOjwVWnKA/viewform';
-  var DOCS_SEND_METHOD = 'Google Form offered (optional upload-only Drive)';
+  var DOCS_SEND_METHOD = 'Google Form offered (optional Drive)';
   var RIGHTS_MONTHS = 24;
 
   var US_STATES = [
@@ -137,6 +137,8 @@
     return (
       '<form action="' + FORMSPREE_ENDPOINT + '" method="POST" class="intake-form" data-intake novalidate>' +
         '<input type="hidden" name="_subject" value="' + escapeAttr(subject) + '">' +
+        '<input type="hidden" name="subject_base" value="' + escapeAttr(subject) + '">' +
+        '<input type="hidden" name="lead_id" value="">' +
         '<input type="hidden" name="form_source" value="' + escapeAttr(source) + '">' +
         '<input type="hidden" name="intake_status" value="">' +
         '<input type="hidden" name="rights_period_status" value="">' +
@@ -270,19 +272,13 @@
 
   function successHtml(firstName, vehicle) {
     var greeting = firstName ? 'Hi ' + escapeHtml(firstName) + ',' : 'Hi,';
+    var about = vehicle && vehicle !== 'vehicle' ? ' about your ' + escapeHtml(vehicle) : '';
     return (
       '<div class="intake-result intake-result-ok" role="status">' +
-        '<p class="intake-result-kicker">Case review received</p>' +
         '<h3>Thank you</h3>' +
         '<p>' + greeting + '</p>' +
-        '<p>Your case review is in. We’ll look at what you sent about your ' + escapeHtml(vehicle) + '.</p>' +
-        '<p>Next step: your documents.</p>' +
-        '<ul class="intake-doc-list">' +
-          '<li>Driver’s license</li>' +
-          '<li>Vehicle registration</li>' +
-          '<li>Lease or purchase contract</li>' +
-          '<li>Repair tickets</li>' +
-        '</ul>' +
+        '<p>Your case review is in' + about + '.</p>' +
+        '<p>Next, upload your documents: driver’s license, registration, lease or purchase contract, and repair tickets.</p>' +
         '<p>' + googleFormCta('Upload your packet') + '</p>' +
         '<p class="intake-docs-secure">Files go to the firm securely.</p>' +
         '<p class="intake-result-skip">Upload is optional. <a href="/">Back to home</a></p>' +
@@ -350,14 +346,43 @@
     return 'in_window';
   }
 
-  function subjectFor(status, baseSubject) {
-    if (status === 'out_of_window') {
-      return baseSubject + ' — Outside 24-month window';
-    }
-    if (status === 'not_sure') {
-      return baseSubject + ' — Delivery date not confirmed';
-    }
-    return baseSubject;
+  function leadId() {
+    var rand = '';
+    try {
+      if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+        var buf = new Uint8Array(4);
+        crypto.getRandomValues(buf);
+        rand = Array.prototype.map.call(buf, function (b) {
+          return ('0' + b.toString(16)).slice(-2);
+        }).join('');
+      }
+    } catch (e) {}
+    if (!rand) rand = Math.random().toString(16).slice(2, 10);
+    return 'awl-' + Date.now().toString(36) + '-' + rand;
+  }
+
+  function ensureLeadId(form) {
+    var el = form.querySelector('input[name="lead_id"]');
+    if (!el) return leadId();
+    if (!String(el.value || '').trim()) el.value = leadId();
+    return el.value;
+  }
+
+  function uniqueLeadSubject(form, baseSubject, status) {
+    var name = formValue(form, 'first_name');
+    var email = formValue(form, 'email');
+    var vehicle = [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' ');
+    var id = ensureLeadId(form);
+    var parts = [baseSubject || 'Auto Warranty Lawyer — Case Review'];
+    if (name) parts.push(name);
+    if (vehicle) parts.push(vehicle);
+    if (email) parts.push(email);
+    parts.push(new Date().toISOString());
+    parts.push(id);
+    var out = parts.join(' — ');
+    if (status === 'out_of_window') return out + ' — Outside 24-month window';
+    if (status === 'not_sure') return out + ' — Delivery date not confirmed';
+    return out;
   }
 
   function formValue(form, name) {
@@ -370,7 +395,7 @@
   function gatherDocs() {
     return [
       'Packet to include if uploading: driver’s license; vehicle registration; lease or purchase contract; repair tickets / repair orders',
-      'Send method: ' + DOCS_SEND_METHOD + ' — upload only, no name/email/vehicle questions: ' + DOCS_GOOGLE_FORM,
+      'Send method: ' + DOCS_SEND_METHOD + ': ' + DOCS_GOOGLE_FORM,
       'Files: none attached to this Formspree email. Upload was not required to submit this lead.'
     ].join(' | ');
   }
@@ -404,6 +429,9 @@
     data.set('name', formValue(form, 'first_name'));
     data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
     data.set('uploaded_files', 'none — not attached to Formspree');
+    data.set('lead_id', ensureLeadId(form));
+    data.set('_subject', uniqueLeadSubject(form, formValue(form, 'subject_base'), formValue(form, 'intake_status')));
+    data.delete('subject_base');
 
     if (formValue(form, 'intake_status') === 'out_of_window') {
       data.set('docs_send_method', 'Not requested — declined outside 24-month window');
@@ -416,7 +444,7 @@
       data.set('docs_google_form', DOCS_GOOGLE_FORM);
       data.set(
         'file_delivery',
-        'No files attached to this Formspree email. Google Form (upload only) was offered; upload is optional and was not required to submit this lead.'
+        'No files attached to this Formspree email. Packet upload is optional via Drive form and was not required to submit this lead.'
       );
     }
     return data;
@@ -578,7 +606,7 @@
           nextStepInput.value = 'Lead in. VIN not collected. Packet optional via Drive form: driver’s license, vehicle registration, lease or purchase contract, repair tickets. This Formspree email has no file attachments. Do NOT send engagement or fee-to-sign until the packet is in. Then explain fees; if they reply “I want to proceed”, send engagement for e-sign (TODO: no e-sign/portal in this repo — use existing recalde-portal or manual send). Signed engagement → open file.';
         }
       }
-      if (subjectInput) subjectInput.value = subjectFor(status, subject);
+      if (subjectInput) subjectInput.value = uniqueLeadSubject(form, subject, status);
     }
 
     function showDeclineAndSubmit() {
@@ -688,6 +716,7 @@
     parseISODate: parseISODate,
     classifyWindow: classifyWindow,
     gatherDocs: gatherDocs,
+    uniqueLeadSubject: uniqueLeadSubject,
     DOCS_GOOGLE_FORM: DOCS_GOOGLE_FORM,
     DOCS_SEND_METHOD: DOCS_SEND_METHOD,
     RIGHTS_MONTHS: RIGHTS_MONTHS,
