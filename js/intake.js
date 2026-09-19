@@ -23,7 +23,12 @@
 
   var FORMSPREE_ENDPOINT = 'https://formspree.io/f/mqegejrg';
   var DOCS_INBOX = 'https://formsubmit.co/ajax/rafael@recaldelaw.com';
-  var FILE_IO_ENDPOINT = 'https://file.io';
+  var LITTERBOX_ENDPOINT = 'https://litterbox.catbox.moe/resources/internals/api.php';
+  var TMPFILES_ENDPOINT = 'https://tmpfiles.org/api/v1/upload';
+  var FILEBIN_ORIGIN = 'https://filebin.net';
+  var GOFILE_SERVERS = 'https://api.gofile.io/servers';
+  var HOST_TIMEOUT_MS = 12000;
+  var TMPFILES_EXPIRE_SECONDS = 172800;
   var MAX_INTAKE_FILES = 10;
   var MAX_FILE_BYTES = 10 * 1024 * 1024;
   var RIGHTS_MONTHS = 24;
@@ -245,7 +250,7 @@
             '<label class="intake-check"><input type="radio" name="docs_send_method" value="Email to rafael@recaldelaw.com" checked><span>I’ll email them to rafael@recaldelaw.com</span></label>' +
           '</fieldset>' +
           '<div class="form-group">' +
-            '<label for="' + fieldId(p, 'attachment') + '">Upload files <span class="intake-optional">(PDF or photos — attached to the review email)</span></label>' +
+            '<label for="' + fieldId(p, 'attachment') + '">Upload files <span class="intake-optional">(PDF or photos — download links go to the review email)</span></label>' +
             '<input type="file" id="' + fieldId(p, 'attachment') + '" name="attachment" data-intake-files multiple accept="image/*,.pdf,application/pdf">' +
             '<p class="intake-file-list" data-file-list hidden></p>' +
           '</div>' +
@@ -405,12 +410,61 @@
     return !!(method && method.value === 'Upload now');
   }
 
+  function isTrustedFileHost(hostname) {
+    var host = String(hostname || '').toLowerCase();
+    if (host.indexOf('www.') === 0) host = host.slice(4);
+    return host === 'litter.catbox.moe' ||
+      host === 'litterbox.catbox.moe' ||
+      host === 'files.catbox.moe' ||
+      host === 'tmpfiles.org' ||
+      host === 'filebin.net' ||
+      host === 'gofile.io';
+  }
+
+  function isHttpsDownloadUrl(value) {
+    if (!value || typeof value !== 'string') return false;
+    var trimmed = value.trim();
+    if (!/^https:\/\/[^\s/$.?#].[^\s]*$/.test(trimmed)) return false;
+    try {
+      var parsed = new URL(trimmed);
+      return parsed.protocol === 'https:' &&
+        isTrustedFileHost(parsed.hostname) &&
+        parsed.pathname &&
+        parsed.pathname.length > 1;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function firstHttpsUrl(text) {
+    var match = String(text || '').match(/https:\/\/[^\s"'<>\\]+/);
+    if (!match) return '';
+    var url = match[0].replace(/[.,;)]+$/, '');
+    return isHttpsDownloadUrl(url) ? url : '';
+  }
+
+  function countHttpsUrls(text) {
+    var matches = String(text || '').match(/https:\/\/[^\s"'<>\\]+/g);
+    if (!matches) return 0;
+    var n = 0;
+    for (var i = 0; i < matches.length; i++) {
+      var url = matches[i].replace(/[.,;)]+$/, '');
+      if (isHttpsDownloadUrl(url)) n += 1;
+    }
+    return n;
+  }
+
+  function hasDeliveredUrls(delivery, files) {
+    if (!delivery || delivery.status !== 'delivered' || !files || !files.length) return false;
+    return countHttpsUrls(delivery.links) >= files.length;
+  }
+
   function fileDeliveryLine(files, delivery) {
     if (!files || !files.length) {
       return 'Files delivered: none. Client chose to email the packet.';
     }
-    if (delivery && delivery.status === 'delivered' && delivery.links) {
-      return 'Files delivered (download / inbox): ' + delivery.links;
+    if (hasDeliveredUrls(delivery, files)) {
+      return 'Files delivered (download): ' + delivery.links;
     }
     return 'Files NOT attached to this email. Selected names only: ' + describeFiles(files) + '. Client was told: Upload failed — email the packet to rafael@recaldelaw.com';
   }
@@ -453,13 +507,16 @@
     data.set('name', formValue(form, 'first_name'));
     data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
     data.set('docs', gatherDocs(form, files, delivery));
-    if (delivery && delivery.status === 'delivered' && delivery.links) {
+    if (hasDeliveredUrls(delivery, files)) {
       data.set('document_links', delivery.links);
-      data.set('file_delivery', 'Delivered. Links or inbox note below — this Formspree email has no binary attachments.');
+      data.set('file_delivery', 'Delivered. Clickable https download links below — this Formspree email has no binary attachments.');
       data.set('uploaded_files', describeFiles(files));
     } else if (files && files.length) {
-      data.set('file_delivery', 'FAILED. No files attached to this email. Client was shown: ' + UPLOAD_FAILED_MSG);
+      data.set('file_delivery', 'FAILED. No verified https download URL. Client was shown: ' + UPLOAD_FAILED_MSG);
       data.set('uploaded_files', 'NOT ATTACHED. Selected: ' + describeFiles(files));
+      if (delivery && firstHttpsUrl(delivery.links)) {
+        data.set('document_links', delivery.links);
+      }
     } else {
       data.set('file_delivery', 'No website upload. Client will email the packet.');
       data.set('uploaded_files', 'none');
@@ -470,29 +527,137 @@
   /**
    * Formspree free/basic drops or rejects file binaries and does not put
    * them in Gmail. A Formspree 200 is NOT proof files arrived.
+   * FormSubmit often lists filenames in uploaded_files without attaching
+   * the binaries. A FormSubmit HTTP 200 is NEVER proof files arrived.
    *
    * Never POST binaries to Formspree. Never retry-without-files and then
    * claim “Files attached: N” from the input count.
    *
-   * Upload-now path: host the files, put download URLs (or an inbox-courier
-   * note) in the Formspree text payload, then send the lead. If that fails,
-   * reject with UPLOAD_FAILED_MSG and do not show a success screen.
+   * Upload path: host each file on a CORS-friendly provider that returns a
+   * real https:// download URL. Verify the URL looks like https:// before
+   * success. Put those URLs in Formspree document_links / docs. If any file
+   * has no verified https URL, reject with UPLOAD_FAILED_MSG and do not
+   * show a success screen.
    */
-  function uploadFileIoLinks(files) {
-    return Promise.all(files.map(function (file) {
-      var data = new FormData();
-      data.append('file', file, file.name || 'upload');
-      data.append('expires', '14d');
-      return postAcceptJson(FILE_IO_ENDPOINT, data).then(function (res) {
-        var link = res.body && (res.body.link || res.body.url);
-        return link ? (file.name || 'file') + ': ' + link : '';
-      });
-    })).then(function (rows) {
-      return rows.filter(Boolean).join('\n');
+  function fetchWithTimeout(url, options, ms) {
+    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+    var timer = setTimeout(function () {
+      if (ctrl) ctrl.abort();
+    }, ms || HOST_TIMEOUT_MS);
+    var opts = {};
+    var key;
+    for (key in (options || {})) {
+      if (Object.prototype.hasOwnProperty.call(options, key)) opts[key] = options[key];
+    }
+    if (ctrl) opts.signal = ctrl.signal;
+    return fetch(url, opts).then(function (res) {
+      clearTimeout(timer);
+      return res;
+    }, function (err) {
+      clearTimeout(timer);
+      throw err;
     });
   }
 
-  function postFilesToInbox(form, files) {
+  function readFetchBody(res) {
+    return res.text().then(function (text) {
+      var json = {};
+      try { json = JSON.parse(text); } catch (e1) {}
+      return { ok: !!res.ok, status: res.status, text: text, json: json };
+    });
+  }
+
+  function postFormNoHeaders(url, data) {
+    return fetchWithTimeout(url, { method: 'POST', body: data }, HOST_TIMEOUT_MS)
+      .then(readFetchBody)
+      .catch(function () {
+        return { ok: false, status: 0, text: '', json: {} };
+      });
+  }
+
+  function randomBinId() {
+    var bytes = new Uint8Array(8);
+    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+      crypto.getRandomValues(bytes);
+    } else {
+      for (var i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+    }
+    return Array.prototype.map.call(bytes, function (b) {
+      return ('0' + b.toString(16)).slice(-2);
+    }).join('');
+  }
+
+  function uploadLitterbox(file) {
+    var data = new FormData();
+    data.append('reqtype', 'fileupload');
+    data.append('time', '72h');
+    data.append('fileToUpload', file, file.name || 'upload');
+    return postFormNoHeaders(LITTERBOX_ENDPOINT, data).then(function (res) {
+      if (!res.ok) return '';
+      return firstHttpsUrl(res.text);
+    });
+  }
+
+  function uploadTmpfiles(file) {
+    var data = new FormData();
+    data.append('file', file, file.name || 'upload');
+    data.append('expire', String(TMPFILES_EXPIRE_SECONDS));
+    return postFormNoHeaders(TMPFILES_ENDPOINT, data).then(function (res) {
+      if (!res.ok || (res.json && res.json.status && res.json.status !== 'success')) return '';
+      var url = res.json && res.json.data && res.json.data.url;
+      if (url && /^http:\/\//i.test(url)) url = 'https://' + url.slice(7);
+      return firstHttpsUrl(url || '');
+    });
+  }
+
+  function uploadFilebin(file, binId) {
+    var name = encodeURIComponent(file.name || 'upload');
+    var href = FILEBIN_ORIGIN + '/' + encodeURIComponent(binId) + '/' + name;
+    var data = new FormData();
+    data.append('file', file, file.name || 'upload');
+    return postFormNoHeaders(href, data).then(function (res) {
+      if (!(res.ok || res.status === 201)) return '';
+      var named = res.json && res.json.file && res.json.file.filename;
+      if (named) {
+        href = FILEBIN_ORIGIN + '/' + encodeURIComponent(binId) + '/' + encodeURIComponent(named);
+      }
+      return firstHttpsUrl(href);
+    });
+  }
+
+  function uploadGofile(file) {
+    return fetchWithTimeout(GOFILE_SERVERS, { method: 'GET' }, HOST_TIMEOUT_MS)
+      .then(readFetchBody)
+      .then(function (res) {
+        var servers = (res.json && res.json.data && res.json.data.servers) || [];
+        var server = servers[0] && servers[0].name;
+        if (!server || !/^[a-z0-9-]+$/i.test(server)) return '';
+        var data = new FormData();
+        data.append('file', file, file.name || 'upload');
+        return postFormNoHeaders('https://' + server + '.gofile.io/contents/uploadfile', data).then(function (up) {
+          if (!up.ok || (up.json && up.json.status && up.json.status !== 'ok')) return '';
+          var page = up.json && up.json.data && (up.json.data.downloadPage || up.json.data.link);
+          return firstHttpsUrl(page || '');
+        });
+      })
+      .catch(function () { return ''; });
+  }
+
+  function tryHosts(file, binId) {
+    var steps = [
+      function () { return uploadLitterbox(file); },
+      function () { return uploadTmpfiles(file); },
+      function () { return uploadFilebin(file, binId); },
+      function () { return uploadGofile(file); }
+    ];
+    return steps.reduce(function (prev, step) {
+      return prev.then(function (url) {
+        return url || step();
+      });
+    }, Promise.resolve(''));
+  }
+
+  function notifyInboxWithLinks(form, files, links) {
     var data = new FormData();
     data.set('_subject', 'Auto Warranty Lawyer — Intake document packet');
     data.set('_template', 'table');
@@ -501,26 +666,31 @@
     data.set('email', formValue(form, 'email'));
     data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
     data.set('uploaded_files', describeFiles(files));
-    data.set('message', 'Document packet from the website intake. The matching lead is in the Formspree notification.');
-    files.forEach(function (file) {
-      data.append('attachment', file, file.name || 'upload');
+    data.set('document_links', links);
+    data.set('message', 'Download links for the website intake packet. Filenames and https links only — no attachments. The matching lead is in the Formspree notification.');
+    return postAcceptJson(DOCS_INBOX, data).catch(function () {
+      return { ok: false };
     });
-    return postAcceptJson(DOCS_INBOX, data);
   }
 
   function deliverFiles(form, files) {
-    return uploadFileIoLinks(files).then(function (links) {
-      return postFilesToInbox(form, files).then(function (courier) {
-        if (links) {
-          return { status: 'delivered', links: links };
-        }
-        if (courier.ok) {
-          return {
-            status: 'delivered',
-            links: 'Emailed as attachments to rafael@recaldelaw.com (not attached to this Formspree message).'
-          };
-        }
-        return { status: 'failed', links: '' };
+    var binId = randomBinId();
+    return Promise.all(files.map(function (file) {
+      return tryHosts(file, binId).then(function (url) {
+        return { name: file.name || 'file', url: url };
+      });
+    })).then(function (rows) {
+      var lines = rows.filter(function (row) { return isHttpsDownloadUrl(row.url); })
+        .map(function (row) { return row.name + ': ' + row.url; });
+      var links = lines.join('\n');
+      var allOk = rows.length === files.length && rows.every(function (row) {
+        return isHttpsDownloadUrl(row.url);
+      });
+      if (!allOk) return { status: 'failed', links: links };
+      return notifyInboxWithLinks(form, files, links).then(function () {
+        return { status: 'delivered', links: links };
+      }, function () {
+        return { status: 'delivered', links: links };
       });
     }).catch(function () {
       return { status: 'failed', links: '' };
@@ -553,7 +723,7 @@
       return {
         ok: true,
         filesRequested: files.length > 0,
-        filesDelivered: !files.length || (delivery && delivery.status === 'delivered'),
+        filesDelivered: !files.length || hasDeliveredUrls(delivery, files),
         names: describeFiles(files),
         links: delivery && delivery.links
       };
@@ -567,7 +737,7 @@
     }
 
     return deliverFiles(form, files).then(function (delivery) {
-      if (uploadNow && delivery.status !== 'delivered') {
+      if (!hasDeliveredUrls(delivery, files)) {
         return postTextLead(form, files, delivery).catch(function () { return false; }).then(function () {
           throw new Error(UPLOAD_FAILED_MSG);
         });
@@ -855,6 +1025,10 @@
     describeFiles: describeFiles,
     selectedFiles: selectedFiles,
     fileDeliveryLine: fileDeliveryLine,
+    isHttpsDownloadUrl: isHttpsDownloadUrl,
+    firstHttpsUrl: firstHttpsUrl,
+    countHttpsUrls: countHttpsUrls,
+    hasDeliveredUrls: hasDeliveredUrls,
     wantsUploadNow: wantsUploadNow,
     UPLOAD_FAILED_MSG: UPLOAD_FAILED_MSG,
     init: initMounts
