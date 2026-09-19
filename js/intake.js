@@ -616,11 +616,9 @@
     var data = new FormData();
     data.append('file', file, file.name || 'upload');
     return postFormNoHeaders(href, data).then(function (res) {
-      if (!(res.ok || res.status === 201)) return '';
       var named = res.json && res.json.file && res.json.file.filename;
-      if (named) {
-        href = FILEBIN_ORIGIN + '/' + encodeURIComponent(binId) + '/' + encodeURIComponent(named);
-      }
+      if (!(res.ok || res.status === 201) || !named) return '';
+      href = FILEBIN_ORIGIN + '/' + encodeURIComponent(binId) + '/' + encodeURIComponent(named);
       return firstHttpsUrl(href);
     });
   }

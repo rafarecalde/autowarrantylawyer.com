@@ -67,6 +67,7 @@ assert('never treats FormSubmit 200 as file delivery', src.indexOf('Emailed as a
 assert('does not use file.io as the upload host', src.indexOf('https://file.io') === -1, true);
 assert('tries litterbox then tmpfiles then filebin', src.indexOf('litterbox.catbox.moe') !== -1 && src.indexOf('tmpfiles.org/api/v1/upload') !== -1 && src.indexOf('https://filebin.net') !== -1, true);
 assert('tmpfiles expire is 48 hours', src.indexOf('var TMPFILES_EXPIRE_SECONDS = 172800') !== -1, true);
+assert('filebin requires filename in host JSON', src.indexOf('if (!(res.ok || res.status === 201) || !named) return \'\';') !== -1, true);
 assert('no-file delivery line is honest', fileDeliveryLine([], { status: 'none' }).indexOf('none') !== -1, true);
 assert('failed delivery line is honest', fileDeliveryLine([{ name: 'dl.pdf', size: 1024 }], { status: 'failed' }).indexOf('NOT attached') !== -1, true);
 assert('delivered without https is not delivered', fileDeliveryLine([{ name: 'dl.pdf', size: 1024 }], { status: 'delivered', links: 'Emailed as attachments to rafael@recaldelaw.com' }).indexOf('NOT attached') !== -1, true);
