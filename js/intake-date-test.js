@@ -70,13 +70,17 @@ assert(
   src.indexOf('https://docs.google.com/forms/d/e/1FAIpQLSei5FtsiCdXDqo9vn8Meu4mwtVosAs9VSMWX0OKjUOjwVWnKA/viewform') !== -1,
   true
 );
-assert('docs_send_method is Google Form Drive upload', src.indexOf("Google Form (Drive upload)") !== -1, true);
+assert('docs_send_method is optional Google Form upload', src.indexOf('Google Form offered (optional upload-only Drive)') !== -1, true);
 assert('Google Form opens in a new tab', src.indexOf('target="_blank"') !== -1 && src.indexOf('data-gform-cta') !== -1, true);
 assert('notes Google account requirement', src.indexOf('signed into a Google account') !== -1, true);
 assert('notes files go to firm Drive only', src.indexOf('Files go to the firm’s Google Drive only') !== -1, true);
+assert('describes one Upload your packet field', src.indexOf('one field') !== -1 && src.indexOf('Upload your packet') !== -1, true);
+assert('does not describe four separate upload fields', !/four separate|four file fields|four uploads|separate upload fields/i.test(src), true);
+assert('Google Form is upload only', src.indexOf('upload only — no name, email, or vehicle questions') !== -1, true);
 assert('does not claim files attached to Formspree', src.indexOf('none — not attached to Formspree') !== -1, true);
-assert('Formspree docs field says sent to Google Form', src.indexOf('Client was sent to Google Form for packet upload') !== -1, true);
-assert('has Google Form opened confirmation checkbox', src.indexOf('name="docs_form_opened"') !== -1 && src.indexOf('data-gform-ack') !== -1, true);
+assert('Formspree docs field says upload was not required', src.indexOf('Upload was not required to submit this lead') !== -1, true);
+assert('submit is not gated on Google Form checkbox', src.indexOf('name="docs_form_opened"') === -1 && src.indexOf('data-gform-ack') === -1 && src.indexOf('syncSubmitEnabled') === -1, true);
+assert('VIN is not an intake field', src.indexOf('name="vin"') === -1 && src.indexOf('17-character VIN') === -1, true);
 assert('intake placeholders are Chevrolet Equinox not Tesla', src.indexOf('placeholder="Chevrolet"') !== -1 && src.indexOf('placeholder="Equinox"') !== -1 && src.indexOf('placeholder="Tesla"') === -1 && src.indexOf('placeholder="Model Y"') === -1, true);
 assert('required docs list includes DL', src.indexOf('Driver’s license') !== -1, true);
 assert('required docs list includes registration', src.indexOf('Vehicle registration') !== -1, true);
