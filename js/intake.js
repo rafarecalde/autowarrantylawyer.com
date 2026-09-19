@@ -231,7 +231,7 @@
             '<li>Lease or purchase contract</li>' +
             '<li>Repair tickets / repair orders</li>' +
           '</ul>' +
-          '<p class="intake-hint">We review the packet before fee terms or an engagement agreement. After that review, reply “I want to proceed” and we’ll send the agreement for electronic signature.</p>' +
+          '<p class="intake-hint">This step is the packet only — not a signature. After the documents are in, we’ll explain fees. If you then reply “I want to proceed,” we’ll send the engagement agreement for electronic signature.</p>' +
           '<fieldset class="intake-fieldset">' +
             '<legend>How will you send them?</legend>' +
             '<label class="intake-check"><input type="radio" name="docs_send_method" value="Upload now"><span>Upload what I have now</span></label>' +
@@ -244,7 +244,7 @@
           '<div class="form-group">' +
             '<label class="intake-check">' +
               '<input type="checkbox" name="docs_packet_ack" value="Understood: full packet required before engagement" required>' +
-              '<span>I understand the firm needs this packet before sending an engagement agreement.</span>' +
+              '<span>I understand the firm needs this packet before fee terms or an engagement agreement.</span>' +
             '</label>' +
           '</div>' +
         '</div>' +
@@ -289,7 +289,7 @@
           '<li>Lease or purchase contract</li>' +
           '<li>Repair tickets / repair orders</li>' +
         '</ul>' +
-        '<p>Once that packet is in, we’ll tell you plainly whether it looks viable under Florida Lemon Law and how fees work. If you want Recalde Law Firm to represent you, reply “I want to proceed.” We’ll send the engagement agreement for electronic signature and open the file after it’s signed.</p>' +
+        '<p>We will not send an engagement agreement until this packet is in. After we have it, we’ll explain fees. Reply “I want to proceed” only then — we’ll send the agreement for electronic signature and open the file after it’s signed.</p>' +
         '<p class="intake-signoff">Recalde Law Firm, P.A.<br>By: Rafael Recalde, Esq.</p>' +
       '</div>'
     );
@@ -312,7 +312,7 @@
     return Array.prototype.slice.call(
       panel.querySelectorAll('input, select, textarea')
     ).filter(function (el) {
-      if (el.disabled || el.type === 'hidden' || el.classList.contains('intake-hp')) return false;
+      if (el.disabled || el.type === 'hidden' || el.type === 'file' || el.classList.contains('intake-hp')) return false;
       if (el.closest('[hidden]')) return false;
       return true;
     });
