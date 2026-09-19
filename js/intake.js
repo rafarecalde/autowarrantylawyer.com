@@ -127,20 +127,38 @@
         '<input type="hidden" name="next_step" value="">' +
         '<input type="hidden" name="docs_required" value="Driver’s license; Vehicle registration; Lease or purchase contract; Repair tickets / repair orders">' +
         '<input type="hidden" name="fee_terms" value="All contingency. No upfront attorney fee. No retainer. If Lemon Law allows manufacturer fee recovery in addition to the client’s recovery, pursue that; otherwise 30% of gross recovery, not reduced by payoffs, mileage offsets, use deductions, or negative equity. Costs (if any) disclosed in engagement — not a retainer.">' +
-        '<input type="text" name="_gotcha" class="intake-hp" tabindex="-1" autocomplete="off" aria-hidden="true">' +
-
-        '<div class="intake-progress" aria-hidden="true">' +
-          '<span class="intake-progress-step is-active" data-progress="1">1</span>' +
-          '<span class="intake-progress-line"></span>' +
-          '<span class="intake-progress-step" data-progress="2">2</span>' +
-          '<span class="intake-progress-line"></span>' +
-          '<span class="intake-progress-step" data-progress="3">3</span>' +
-          '<span class="intake-progress-line"></span>' +
-          '<span class="intake-progress-step" data-progress="4">4</span>' +
-        '</div>' +
         '<p class="intake-step-label" data-step-label>Step 1 of 4 — Delivery date</p>' +
+        '<div class="intake-progress" aria-hidden="true">' +
+          '<span class="intake-progress-step is-active" data-progress="1"></span>' +
+          '<span class="intake-progress-line"></span>' +
+          '<span class="intake-progress-step" data-progress="2"></span>' +
+          '<span class="intake-progress-line"></span>' +
+          '<span class="intake-progress-step" data-progress="3"></span>' +
+          '<span class="intake-progress-line"></span>' +
+          '<span class="intake-progress-step" data-progress="4"></span>' +
+        '</div>' +
 
         '<div class="intake-panel" data-panel="1">' +
+          '<div class="form-group">' +
+            '<label for="' + fieldId(p, 'delivery_date') + '">Original delivery date</label>' +
+            '<input type="date" id="' + fieldId(p, 'delivery_date') + '" name="delivery_date" required autocomplete="off">' +
+            '<p class="intake-hint">The day you (or the first owner) took possession of the vehicle.</p>' +
+          '</div>' +
+          '<div class="form-group">' +
+            '<label class="intake-check">' +
+              '<input type="checkbox" name="delivery_date_unknown" value="I don\'t have the exact date" data-unknown-date>' +
+              '<span>I don\'t have the exact date</span>' +
+            '</label>' +
+          '</div>' +
+          '<div class="form-group" data-unknown-wrap hidden>' +
+            '<label for="' + fieldId(p, 'delivery_window_guess') + '">Was it delivered to the first owner within the last 24 months?</label>' +
+            '<select id="' + fieldId(p, 'delivery_window_guess') + '" name="delivery_window_guess">' +
+              '<option value="">Select...</option>' +
+              '<option value="Yes — within the last 24 months">Yes — within the last 24 months</option>' +
+              '<option value="Not sure">Not sure</option>' +
+              '<option value="No — more than 24 months ago">No — more than 24 months ago</option>' +
+            '</select>' +
+          '</div>' +
           '<div class="intake-row' + (compact ? ' intake-row-stack' : '') + '">' +
             '<div class="form-group">' +
               '<label for="' + fieldId(p, 'first_name') + '">First name</label>' +
@@ -164,26 +182,6 @@
               '<label for="' + modelId + '">Model</label>' +
               '<input type="text" id="' + modelId + '" name="model" placeholder="Model Y" required>' +
             '</div>' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label for="' + fieldId(p, 'delivery_date') + '">Original delivery date</label>' +
-            '<input type="date" id="' + fieldId(p, 'delivery_date') + '" name="delivery_date" required>' +
-            '<p class="intake-hint">The day you (or the first owner) took possession of the vehicle.</p>' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label class="intake-check">' +
-              '<input type="checkbox" name="delivery_date_unknown" value="I don\'t have the exact date" data-unknown-date>' +
-              '<span>I don\'t have the exact date</span>' +
-            '</label>' +
-          '</div>' +
-          '<div class="form-group" data-unknown-wrap hidden>' +
-            '<label for="' + fieldId(p, 'delivery_window_guess') + '">Was it delivered to the first owner within the last 24 months?</label>' +
-            '<select id="' + fieldId(p, 'delivery_window_guess') + '" name="delivery_window_guess">' +
-              '<option value="">Select...</option>' +
-              '<option value="Yes — within the last 24 months">Yes — within the last 24 months</option>' +
-              '<option value="Not sure">Not sure</option>' +
-              '<option value="No — more than 24 months ago">No — more than 24 months ago</option>' +
-            '</select>' +
           '</div>' +
         '</div>' +
 
@@ -262,6 +260,9 @@
           '<button type="submit" class="btn btn-primary btn-block" data-submit hidden>Submit my case review</button>' +
         '</div>' +
         '<p class="form-note">Submitting this form does not create an attorney-client relationship. All information is kept confidential. We accept Florida Lemon Law cases for vehicles within the 24-month Lemon Law Rights Period (Fla. Stat. § 681.102(9)).</p>' +
+        '<div class="intake-hp" aria-hidden="true">' +
+          '<input type="text" name="_gotcha" class="intake-hp-input" tabindex="-1" autocomplete="off">' +
+        '</div>' +
       '</form>'
     );
   }
@@ -317,7 +318,8 @@
     return Array.prototype.slice.call(
       panel.querySelectorAll('input, select, textarea')
     ).filter(function (el) {
-      if (el.disabled || el.type === 'hidden' || el.type === 'file' || el.classList.contains('intake-hp')) return false;
+      if (el.disabled || el.type === 'hidden' || el.type === 'file' || el.classList.contains('intake-hp') || el.classList.contains('intake-hp-input') || el.name === '_gotcha') return false;
+      if (el.closest('.intake-hp')) return false;
       if (el.closest('[hidden]')) return false;
       return true;
     });
@@ -401,7 +403,7 @@
     data.set('vehicle', [year, make, model].filter(Boolean).join(' '));
     data.delete('_gotcha');
     if (skipFiles) data = formDataWithoutFiles(data);
-    var gotcha = form.querySelector('.intake-hp');
+    var gotcha = form.querySelector('input[name="_gotcha"], .intake-hp-input');
     if (gotcha && gotcha.value) {
       return Promise.resolve({ ok: true, skipped: true });
     }

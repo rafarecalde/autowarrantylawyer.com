@@ -331,7 +331,6 @@ strong { font-weight: 700; color: var(--ink); }
   box-shadow: 0 0 0 3px rgba(30,106,229,.12);
 }
 .hero-form .intake-check input,
-.hero-form .intake-hp,
 .hero-form input[type="file"] {
   width: auto;
 }
@@ -357,20 +356,42 @@ strong { font-weight: 700; color: var(--ink); }
 }
 
 /* ===== Multi-step intake ===== */
-.intake-hp {
-  position: absolute;
-  left: -9999px;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
+.intake-form {
+  position: relative;
+}
+.intake-hp,
+.intake-hp input,
+.hero-form .intake-hp,
+.hero-form .intake-hp input,
+.hero-form input.intake-hp-input,
+.cr-wrap .intake-hp,
+.cr-wrap .intake-hp input,
+.cr-wrap input.intake-hp-input {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  left: 0 !important;
+  top: 0 !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
 }
 .intake-progress {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 10px;
+  margin: 0 0 16px;
 }
 .intake-progress-step {
+  flex: 0 0 26px;
   width: 26px;
   height: 26px;
   border-radius: 50%;
@@ -382,6 +403,9 @@ strong { font-weight: 700; color: var(--ink); }
   align-items: center;
   justify-content: center;
   background: var(--white);
+}
+.intake-progress-step::before {
+  content: attr(data-progress);
 }
 .intake-progress-step.is-active {
   border-color: var(--amber);
@@ -402,8 +426,16 @@ strong { font-weight: 700; color: var(--ink); }
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--muted);
-  margin-bottom: 14px;
+  margin: 0 0 10px;
   letter-spacing: 0.02em;
+}
+.intake-form input[type="date"],
+.hero-form input[type="date"],
+.cr-wrap input[type="date"] {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  line-height: 1.2;
 }
 .intake-row {
   display: grid;
