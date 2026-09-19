@@ -194,11 +194,11 @@
             '</div>' +
             '<div class="form-group">' +
               '<label for="' + makeId + '">Make</label>' +
-              '<input type="text" id="' + makeId + '" name="make" placeholder="Tesla" required>' +
+              '<input type="text" id="' + makeId + '" name="make" placeholder="Chevrolet" required>' +
             '</div>' +
             '<div class="form-group">' +
               '<label for="' + modelId + '">Model</label>' +
-              '<input type="text" id="' + modelId + '" name="model" placeholder="Model Y" required>' +
+              '<input type="text" id="' + modelId + '" name="model" placeholder="Equinox" required>' +
             '</div>' +
           '</div>' +
         '</div>' +

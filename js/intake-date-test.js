@@ -77,6 +77,7 @@ assert('notes files go to firm Drive only', src.indexOf('Files go to the firm’
 assert('does not claim files attached to Formspree', src.indexOf('none — not attached to Formspree') !== -1, true);
 assert('Formspree docs field says sent to Google Form', src.indexOf('Client was sent to Google Form for packet upload') !== -1, true);
 assert('has Google Form opened confirmation checkbox', src.indexOf('name="docs_form_opened"') !== -1 && src.indexOf('data-gform-ack') !== -1, true);
+assert('intake placeholders are Chevrolet Equinox not Tesla', src.indexOf('placeholder="Chevrolet"') !== -1 && src.indexOf('placeholder="Equinox"') !== -1 && src.indexOf('placeholder="Tesla"') === -1 && src.indexOf('placeholder="Model Y"') === -1, true);
 assert('required docs list includes DL', src.indexOf('Driver’s license') !== -1, true);
 assert('required docs list includes registration', src.indexOf('Vehicle registration') !== -1, true);
 assert('required docs list includes contract', src.indexOf('Lease or purchase contract') !== -1, true);
