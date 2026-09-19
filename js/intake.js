@@ -2,6 +2,17 @@
  * Multi-step Florida Lemon Law intake.
  * Posts to the existing Formspree endpoint so current lead emails keep working.
  * Hard-screens Fla. Stat. § 681.102(9): rights period ends 24 months after original delivery.
+ *
+ * Locked funnel after a pass:
+ *   1) Full document packet (DL, registration, lease/purchase, repair tickets)
+ *   2) Fee explanation + reply “I want to proceed”
+ *   3) Engagement letter for electronic signature
+ *   4) Signed engagement → open the file
+ *
+ * TODO(esign): This repo has no recalde-portal, DocuSign, or other e-sign integration.
+ * Do not invent one here. After the packet is in and the lead replies “I want to proceed”,
+ * send the engagement agreement for e-signature through the firm’s existing portal
+ * (recalde-portal.netlify.app lives in a different repo) or the current manual process.
  */
 (function () {
   'use strict';
@@ -109,6 +120,8 @@
         '<input type="hidden" name="form_source" value="' + escapeAttr(source) + '">' +
         '<input type="hidden" name="intake_status" value="">' +
         '<input type="hidden" name="rights_period_status" value="">' +
+        '<input type="hidden" name="next_step" value="">' +
+        '<input type="hidden" name="docs_required" value="Driver’s license; Vehicle registration; Lease or purchase contract; Repair tickets / repair orders">' +
         '<input type="text" name="_gotcha" class="intake-hp" tabindex="-1" autocomplete="off" aria-hidden="true">' +
 
         '<div class="intake-progress" aria-hidden="true">' +
@@ -211,20 +224,28 @@
         '</div>' +
 
         '<div class="intake-panel" data-panel="4" hidden>' +
-          '<p class="intake-docs-lead">Which of these do you have, or can you send with your next reply?</p>' +
-          '<div class="intake-docs">' +
-            '<label class="intake-check"><input type="checkbox" name="docs" value="Purchase or lease agreement"><span>Purchase or lease agreement</span></label>' +
-            '<label class="intake-check"><input type="checkbox" name="docs" value="Repair orders"><span>Repair orders</span></label>' +
-            '<label class="intake-check"><input type="checkbox" name="docs" value="Warranty information"><span>Warranty information</span></label>' +
-            '<label class="intake-check"><input type="checkbox" name="docs" value="Emails or letters with the dealer or manufacturer"><span>Emails or letters with the dealer or manufacturer</span></label>' +
+          '<p class="intake-docs-lead">To finish the evaluation, send this packet — email or upload:</p>' +
+          '<ul class="intake-doc-list">' +
+            '<li>Driver’s license</li>' +
+            '<li>Vehicle registration</li>' +
+            '<li>Lease or purchase contract</li>' +
+            '<li>Repair tickets / repair orders</li>' +
+          '</ul>' +
+          '<p class="intake-hint">We review the packet before fee terms or an engagement agreement. After that review, reply “I want to proceed” and we’ll send the agreement for electronic signature.</p>' +
+          '<fieldset class="intake-fieldset">' +
+            '<legend>How will you send them?</legend>' +
+            '<label class="intake-check"><input type="radio" name="docs_send_method" value="Upload now"><span>Upload what I have now</span></label>' +
+            '<label class="intake-check"><input type="radio" name="docs_send_method" value="Email to rafael@recaldelaw.com" checked><span>I’ll email them to rafael@recaldelaw.com</span></label>' +
+          '</fieldset>' +
+          '<div class="form-group">' +
+            '<label for="' + fieldId(p, 'documents') + '">Upload files <span class="intake-optional">(optional — PDF or photos)</span></label>' +
+            '<input type="file" id="' + fieldId(p, 'documents') + '" name="documents" multiple accept="image/*,.pdf,application/pdf">' +
           '</div>' +
           '<div class="form-group">' +
-            '<label for="' + fieldId(p, 'phone') + '">Phone <span class="intake-optional">(optional)</span></label>' +
-            '<input type="tel" id="' + fieldId(p, 'phone') + '" name="phone" autocomplete="tel">' +
-          '</div>' +
-          '<div class="form-group">' +
-            '<label for="' + fieldId(p, 'notes') + '">Anything else we should know? <span class="intake-optional">(optional)</span></label>' +
-            '<textarea id="' + fieldId(p, 'notes') + '" name="notes" rows="2" placeholder="Goodwill offers, prior counsel, arbitration..."></textarea>' +
+            '<label class="intake-check">' +
+              '<input type="checkbox" name="docs_packet_ack" value="Understood: full packet required before engagement" required>' +
+              '<span>I understand the firm needs this packet before sending an engagement agreement.</span>' +
+            '</label>' +
           '</div>' +
         '</div>' +
 
@@ -261,8 +282,14 @@
         '<h3>Your case review is in</h3>' +
         '<p>' + greeting + '</p>' +
         '<p>Thank you for contacting Recalde Law Firm about your ' + escapeHtml(vehicle) + '.</p>' +
-        '<p>We’ll review what you sent and tell you plainly whether it looks viable under Florida Lemon Law and, if so, how we’d proceed — including fees.</p>' +
-        '<p>If you have copies of the purchase or lease agreement, repair orders, warranty information, or correspondence with the dealer or manufacturer, keep those handy. We’ll ask for anything still needed to finish the evaluation.</p>' +
+        '<p>Next step: send the full document packet so we can finish the evaluation. Email it to <a href="mailto:rafael@recaldelaw.com">rafael@recaldelaw.com</a> (or reply to the message you receive) if you did not upload it just now:</p>' +
+        '<ul class="intake-doc-list">' +
+          '<li>Driver’s license</li>' +
+          '<li>Vehicle registration</li>' +
+          '<li>Lease or purchase contract</li>' +
+          '<li>Repair tickets / repair orders</li>' +
+        '</ul>' +
+        '<p>Once that packet is in, we’ll tell you plainly whether it looks viable under Florida Lemon Law and how fees work. If you want Recalde Law Firm to represent you, reply “I want to proceed.” We’ll send the engagement agreement for electronic signature and open the file after it’s signed.</p>' +
         '<p class="intake-signoff">Recalde Law Firm, P.A.<br>By: Rafael Recalde, Esq.</p>' +
       '</div>'
     );
@@ -337,12 +364,28 @@
   }
 
   function gatherDocs(form) {
-    var boxes = form.querySelectorAll('input[name="docs"]:checked');
-    var values = Array.prototype.map.call(boxes, function (el) { return el.value; });
-    return values.length ? values.join('; ') : 'None selected';
+    var method = form.querySelector('input[name="docs_send_method"]:checked');
+    var ack = form.querySelector('input[name="docs_packet_ack"]');
+    var files = form.querySelector('input[name="documents"]');
+    var fileCount = files && files.files ? files.files.length : 0;
+    return [
+      'Required packet: driver’s license; vehicle registration; lease or purchase contract; repair tickets / repair orders',
+      'Send method: ' + (method ? method.value : 'not selected'),
+      'Files attached on this submit: ' + fileCount,
+      'Packet ack: ' + (ack && ack.checked ? 'yes' : 'no')
+    ].join(' | ');
   }
 
-  function postLead(form) {
+  function formDataWithoutFiles(data) {
+    var clean = new FormData();
+    data.forEach(function (value, key) {
+      if (typeof File !== 'undefined' && value instanceof File) return;
+      clean.append(key, value);
+    });
+    return clean;
+  }
+
+  function postLead(form, skipFiles) {
     var data = new FormData(form);
     data.set('docs', gatherDocs(form));
     var first = (form.elements.first_name && form.elements.first_name.value.trim()) || '';
@@ -352,6 +395,7 @@
     data.set('name', first);
     data.set('vehicle', [year, make, model].filter(Boolean).join(' '));
     data.delete('_gotcha');
+    if (skipFiles) data = formDataWithoutFiles(data);
     var gotcha = form.querySelector('.intake-hp');
     if (gotcha && gotcha.value) {
       return Promise.resolve({ ok: true, skipped: true });
@@ -363,6 +407,7 @@
       headers: { Accept: 'application/json' }
     }).then(function (res) {
       if (!res.ok) {
+        if (!skipFiles) return postLead(form, true);
         return res.json().catch(function () { return {}; }).then(function (body) {
           var err = new Error((body && body.error) || 'Unable to submit right now.');
           err.status = res.status;
@@ -402,7 +447,7 @@
       'Step 1 of 4 — Delivery date',
       'Step 2 of 4 — Vehicle details',
       'Step 3 of 4 — Repair history',
-      'Step 4 of 4 — Documents'
+      'Step 4 of 4 — Document packet'
     ];
 
     var unknown = form.querySelector('[data-unknown-date]');
@@ -415,6 +460,7 @@
     var stepLabel = form.querySelector('[data-step-label]');
     var statusInput = form.querySelector('input[name="intake_status"]');
     var rightsInput = form.querySelector('input[name="rights_period_status"]');
+    var nextStepInput = form.querySelector('input[name="next_step"]');
     var subjectInput = form.querySelector('input[name="_subject"]');
 
     function showPanel(n) {
@@ -460,6 +506,13 @@
           rightsInput.value = 'Delivery date not confirmed — needs follow-up';
         } else {
           rightsInput.value = 'Looks inside 24-month Lemon Law Rights Period';
+        }
+      }
+      if (nextStepInput) {
+        if (status === 'out_of_window') {
+          nextStepInput.value = 'Declined — do not request documents or send engagement.';
+        } else {
+          nextStepInput.value = 'Await FULL document packet (driver’s license, vehicle registration, lease or purchase contract, repair tickets). Do NOT send engagement or fee-to-sign until the packet is in. Then explain fees; if they reply “I want to proceed”, send engagement for e-sign (TODO: no e-sign/portal in this repo — use existing recalde-portal or manual send). Signed engagement → open file.';
         }
       }
       if (subjectInput) subjectInput.value = subjectFor(status, subject);
