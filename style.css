@@ -578,6 +578,22 @@ a.intake-gform-cta {
 .intake-result-decline {
   padding-top: 4px;
 }
+.intake-result-ok .intake-gform-cta {
+  margin: 8px 0 4px;
+}
+.intake-result-skip {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+.intake-result-skip a {
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.intake-result-skip a:hover {
+  color: var(--text);
+}
 .cr-page .intake-form { margin-top: 8px; }
 .cr-page .intake-row-stack { grid-template-columns: 1fr 1fr; }
 

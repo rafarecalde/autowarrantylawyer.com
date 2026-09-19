@@ -13,8 +13,9 @@
  * Manufacturer fee recovery when the statute allows; otherwise 30% of gross
  * recovery. Out-of-pocket items are costs disclosed in the engagement.
  *
- * Document packet: optional Google Form (upload only, Drive). This page never
- * posts binaries. Formspree is the text lead and must submit without an upload.
+ * Document packet: offered only AFTER a successful Formspree submit (optional
+ * Google Form / Drive). This page never posts binaries. Formspree is the text
+ * lead and must submit without an upload.
  *
  * TODO(esign): This repo has no recalde-portal, DocuSign, or other e-sign integration.
  * Do not invent one here. After the packet is in and the lead replies “I want to proceed”,
@@ -144,15 +145,13 @@
         '<input type="hidden" name="docs_send_method" value="' + escapeAttr(DOCS_SEND_METHOD) + '">' +
         '<input type="hidden" name="docs_google_form" value="' + escapeAttr(DOCS_GOOGLE_FORM) + '">' +
         '<input type="hidden" name="fee_terms" value="All contingency. No upfront attorney fee. No retainer. If Lemon Law allows manufacturer fee recovery in addition to the client’s recovery, pursue that; otherwise 30% of gross recovery, not reduced by payoffs, mileage offsets, use deductions, or negative equity. Costs (if any) disclosed in engagement — not a retainer.">' +
-        '<p class="intake-step-label" data-step-label>Step 1 of 4 — Delivery date</p>' +
+        '<p class="intake-step-label" data-step-label>Step 1 of 3 — Delivery date</p>' +
         '<div class="intake-progress" aria-hidden="true">' +
           '<span class="intake-progress-step is-active" data-progress="1"></span>' +
           '<span class="intake-progress-line"></span>' +
           '<span class="intake-progress-step" data-progress="2"></span>' +
           '<span class="intake-progress-line"></span>' +
           '<span class="intake-progress-step" data-progress="3"></span>' +
-          '<span class="intake-progress-line"></span>' +
-          '<span class="intake-progress-step" data-progress="4"></span>' +
         '</div>' +
 
         '<div class="intake-panel" data-panel="1">' +
@@ -176,6 +175,9 @@
               '<option value="No — more than 24 months ago">No — more than 24 months ago</option>' +
             '</select>' +
           '</div>' +
+        '</div>' +
+
+        '<div class="intake-panel" data-panel="2" hidden>' +
           '<div class="intake-row' + (compact ? ' intake-row-stack' : '') + '">' +
             '<div class="form-group">' +
               '<label for="' + fieldId(p, 'first_name') + '">First name</label>' +
@@ -200,9 +202,6 @@
               '<input type="text" id="' + modelId + '" name="model" placeholder="Equinox" required>' +
             '</div>' +
           '</div>' +
-        '</div>' +
-
-        '<div class="intake-panel" data-panel="2" hidden>' +
           '<div class="form-group">' +
             '<label for="' + fieldId(p, 'purchase_state') + '">State where you purchased or leased</label>' +
             '<select id="' + fieldId(p, 'purchase_state') + '" name="purchase_state" required>' +
@@ -239,20 +238,6 @@
           '</div>' +
         '</div>' +
 
-        '<div class="intake-panel" data-panel="4" hidden>' +
-          '<p class="intake-docs-lead">You can submit your case review now. Uploading documents is optional.</p>' +
-          '<p class="intake-hint">If you have them, upload:</p>' +
-          '<ul class="intake-doc-list">' +
-            '<li>Driver’s license</li>' +
-            '<li>Vehicle registration</li>' +
-            '<li>Lease or purchase contract</li>' +
-            '<li>Repair tickets / repair orders</li>' +
-          '</ul>' +
-          '<p class="intake-docs-secure">The Google Form is upload only — no name, email, or vehicle questions. Attach the files in one field. Files go to the firm’s Google Drive only — they are not attached to this case-review email.</p>' +
-          googleFormCta('Upload your packet') +
-          '<p class="intake-gform-note">Opens in a new tab. Google requires you to be signed into a Google account only if you attach files. You do not have to upload before submitting this case review.</p>' +
-        '</div>' +
-
         '<div class="form-error" data-intake-error hidden></div>' +
 
         '<div class="intake-actions">' +
@@ -287,13 +272,20 @@
     var greeting = firstName ? 'Hi ' + escapeHtml(firstName) + ',' : 'Hi,';
     return (
       '<div class="intake-result intake-result-ok" role="status">' +
-        '<h3>Your case review is in</h3>' +
+        '<p class="intake-result-kicker">Case review received</p>' +
+        '<h3>Thank you</h3>' +
         '<p>' + greeting + '</p>' +
-        '<p>Thank you for contacting Recalde Law Firm about your ' + escapeHtml(vehicle) + '.</p>' +
-        '<p>Your contact details were sent to the firm. Files are not attached to that email.</p>' +
-        '<p>If you have the packet, upload driver’s license, registration, lease or purchase contract, and repair tickets. The Google Form is upload only — no name, email, or vehicle questions. Files go to the firm’s Google Drive only:</p>' +
+        '<p>Your case review is in. We’ll look at what you sent about your ' + escapeHtml(vehicle) + '.</p>' +
+        '<p>Next step: your documents.</p>' +
+        '<ul class="intake-doc-list">' +
+          '<li>Driver’s license</li>' +
+          '<li>Vehicle registration</li>' +
+          '<li>Lease or purchase contract</li>' +
+          '<li>Repair tickets</li>' +
+        '</ul>' +
         '<p>' + googleFormCta('Upload your packet') + '</p>' +
-        '<p>We will not send an engagement agreement until this packet is in. After we have it, we’ll explain fees. Reply “I want to proceed” only then — we’ll send the agreement for electronic signature and open the file after it’s signed.</p>' +
+        '<p class="intake-docs-secure">Files go to the firm securely.</p>' +
+        '<p class="intake-result-skip">Upload is optional. <a href="/">Back to home</a></p>' +
         '<p class="intake-signoff">Recalde Law Firm, P.A.<br>By: Rafael Recalde, Esq.</p>' +
       '</div>'
     );
@@ -399,9 +391,9 @@
 
   /**
    * Formspree free/basic drops file binaries. This intake never uploads
-   * files from the browser. Step 4 sends the client to a Google Form
-   * (Drive). The Formspree payload is text only — never claim files were
-   * attached.
+   * files from the browser. After a successful submit, the success screen
+   * offers an optional Google Form (Drive). The Formspree payload is text
+   * only — never claim files were attached.
    */
   function buildLeadData(form) {
     var data = new FormData(form);
@@ -494,19 +486,17 @@
     if (!form) return;
 
     var step = 1;
-    var total = 4;
+    var total = 3;
     var submitting = false;
     var labels = [
-      'Step 1 of 4 — Delivery date',
-      'Step 2 of 4 — Vehicle details',
-      'Step 3 of 4 — Repair history',
-      'Step 4 of 4 — Document packet'
+      'Step 1 of 3 — Delivery date',
+      'Step 2 of 3 — Vehicle & contact',
+      'Step 3 of 3 — Repair history'
     ];
     var leads = [
-      'A few questions, starting with the original delivery date. If you’re in the 24-month window, we’ll take the rest of the facts and you can submit — uploading documents is optional.',
-      'Next: the state of purchase or lease, and whether this was a purchase or a lease.',
-      'How many repair visits for the same problem, and how long the vehicle was out of service.',
-      'You can submit now. Uploading your packet is optional and can be done after you send this review.'
+      'A few questions, starting with the original delivery date. If you’re in the 24-month window, we’ll take the rest of the facts and you can submit.',
+      'Your vehicle and how we can reach you.',
+      'Repair visits, days out of service, and what’s going on. Then submit.'
     ];
 
     var unknown = form.querySelector('[data-unknown-date]');
@@ -585,7 +575,7 @@
         if (status === 'out_of_window') {
           nextStepInput.value = 'Declined — do not request documents or send engagement.';
         } else {
-          nextStepInput.value = 'Lead in. VIN not collected. Optional Google Form (upload only) for packet: driver’s license, vehicle registration, lease or purchase contract, repair tickets. This Formspree email has no file attachments. Do NOT send engagement or fee-to-sign until the packet is in. Then explain fees; if they reply “I want to proceed”, send engagement for e-sign (TODO: no e-sign/portal in this repo — use existing recalde-portal or manual send). Signed engagement → open file.';
+          nextStepInput.value = 'Lead in. VIN not collected. Packet optional via Drive form: driver’s license, vehicle registration, lease or purchase contract, repair tickets. This Formspree email has no file attachments. Do NOT send engagement or fee-to-sign until the packet is in. Then explain fees; if they reply “I want to proceed”, send engagement for e-sign (TODO: no e-sign/portal in this repo — use existing recalde-portal or manual send). Signed engagement → open file.';
         }
       }
       if (subjectInput) subjectInput.value = subjectFor(status, subject);
