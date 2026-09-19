@@ -1,5 +1,6 @@
 /**
- * Node checks for Fla. Stat. § 681.102(9) 24-month window math.
+ * Node checks for Fla. Stat. § 681.102(9) 24-month window math
+ * and Step 4 Google Form / Formspree text-lead wiring.
  * Run: node js/intake-date-test.js
  */
 var fs = require('fs');
@@ -16,8 +17,6 @@ function extract(fnName) {
 eval(extract('parseISODate'));
 eval(extract('isOutsideRightsPeriod'));
 eval(extract('isFutureDate'));
-eval(extract('describeFiles'));
-eval(extract('fileDeliveryLine'));
 
 function d(y, m, day) {
   return new Date(y, m - 1, day);
@@ -31,6 +30,10 @@ function assert(name, actual, expected) {
   } else {
     console.log('ok  ', name);
   }
+}
+
+function assertNo(name, haystack, needle) {
+  assert(name, haystack.indexOf(needle) === -1, true);
 }
 
 // Anniversary is still inside the window.
@@ -50,20 +53,38 @@ assert('honeypot is visually-hidden wrapper', src.indexOf('class="intake-hp"') !
 assert('honeypot is tabindex -1', src.indexOf('tabindex="-1"') !== -1, true);
 assert('honeypot autocomplete off', /name="_gotcha"[^>]*autocomplete="off"|autocomplete="off"[^>]*name="_gotcha"/.test(src), true);
 assert('progress steps have no inner 1234 text', !/>1<\/span>/.test(src) && !/>2<\/span>/.test(src), true);
-assert('form is multipart', src.indexOf('enctype="multipart/form-data"') !== -1, true);
-assert('file field is attachment', src.indexOf('name="attachment"') !== -1, true);
 assert('does not silently strip files on retry', src.indexOf('formDataWithoutFiles') === -1 && !/if \(!skipFiles\) return postLead\(form, true\)/.test(src), true);
 assert('never claims Files attached from input count', src.indexOf('Files attached on this submit') === -1, true);
-assert('does not POST binaries to Formspree', src.indexOf('data.append(\'attachment\'') === -1 || src.indexOf('Never POST binaries to Formspree') !== -1, true);
-assert('fail-closed upload copy', src.indexOf('Upload failed — email the packet to rafael@recaldelaw.com') !== -1, true);
-assert('has inbox courier for files', src.indexOf('formsubmit.co/ajax/rafael@recaldelaw.com') !== -1, true);
-assert('no-file delivery line is honest', fileDeliveryLine([], { status: 'none' }).indexOf('none') !== -1, true);
-assert('failed delivery line is honest', fileDeliveryLine([{ name: 'dl.pdf', size: 1024 }], { status: 'failed' }).indexOf('NOT attached') !== -1, true);
-assert('delivered delivery line has links', fileDeliveryLine([{ name: 'dl.pdf', size: 1024 }], { status: 'delivered', links: 'https://file.io/abc' }).indexOf('https://file.io/abc') !== -1, true);
+assert('does not POST binaries to Formspree', src.indexOf("data.append('attachment'") === -1, true);
+assert('does not POST binaries to FormSubmit', src.indexOf("data.append('attachment'") === -1, true);
+assert('no FormSubmit inbox path', src.indexOf('formsubmit.co') === -1, true);
+assert('no file.io host', src.indexOf('file.io') === -1, true);
+assert('no litterbox host', src.indexOf('litterbox') === -1 && src.indexOf('catbox.moe') === -1, true);
+assert('no tmpfiles host', src.indexOf('tmpfiles') === -1, true);
+assert('no filebin host', src.indexOf('filebin') === -1, true);
+assert('no gofile host', src.indexOf('gofile') === -1, true);
+assert('no file input', src.indexOf('type="file"') === -1 && src.indexOf('name="attachment"') === -1, true);
+assert('no multipart file encoding', src.indexOf('enctype="multipart/form-data"') === -1, true);
+assert(
+  'wires Google Form URL',
+  src.indexOf('https://docs.google.com/forms/d/e/1FAIpQLSei5FtsiCdXDqo9vn8Meu4mwtVosAs9VSMWX0OKjUOjwVWnKA/viewform') !== -1,
+  true
+);
+assert('docs_send_method is Google Form Drive upload', src.indexOf("Google Form (Drive upload)") !== -1, true);
+assert('Google Form opens in a new tab', src.indexOf('target="_blank"') !== -1 && src.indexOf('data-gform-cta') !== -1, true);
+assert('notes Google account requirement', src.indexOf('signed into a Google account') !== -1, true);
+assert('notes files go to firm Drive only', src.indexOf('Files go to the firm’s Google Drive only') !== -1, true);
+assert('does not claim files attached to Formspree', src.indexOf('none — not attached to Formspree') !== -1, true);
+assert('Formspree docs field says sent to Google Form', src.indexOf('Client was sent to Google Form for packet upload') !== -1, true);
+assert('has Google Form opened confirmation checkbox', src.indexOf('name="docs_form_opened"') !== -1 && src.indexOf('data-gform-ack') !== -1, true);
+assert('intake placeholders are Chevrolet Equinox not Tesla', src.indexOf('placeholder="Chevrolet"') !== -1 && src.indexOf('placeholder="Equinox"') !== -1 && src.indexOf('placeholder="Tesla"') === -1 && src.indexOf('placeholder="Model Y"') === -1, true);
+assert('required docs list includes DL', src.indexOf('Driver’s license') !== -1, true);
+assert('required docs list includes registration', src.indexOf('Vehicle registration') !== -1, true);
+assert('required docs list includes contract', src.indexOf('Lease or purchase contract') !== -1, true);
+assert('required docs list includes repair tickets', src.indexOf('Repair tickets / repair orders') !== -1, true);
 assert('decline is a designed screen', src.indexOf('Outside the 24-month window') !== -1, true);
 assert('initial showPanel is silent', src.indexOf('showPanel(1, { silent: true })') !== -1, true);
-assert('describe empty files', describeFiles([]), 'None uploaded on this submit');
-assert('describe named file', describeFiles([{ name: 'dl.pdf', size: 2048 }]), 'dl.pdf (2 KB)');
+assertNo('no upload-failed fail-closed copy', src, 'Upload failed — email the packet to rafael@recaldelaw.com');
 
 if (failed) {
   console.error(failed + ' failed');
