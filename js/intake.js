@@ -9,6 +9,10 @@
  *   3) Engagement letter for electronic signature
  *   4) Signed engagement → open the file
  *
+ * Fees are ALL CONTINGENCY: no small upfront attorney fee, no retainer.
+ * Manufacturer fee recovery when the statute allows; otherwise 30% of gross
+ * recovery. Out-of-pocket items are costs disclosed in the engagement.
+ *
  * TODO(esign): This repo has no recalde-portal, DocuSign, or other e-sign integration.
  * Do not invent one here. After the packet is in and the lead replies “I want to proceed”,
  * send the engagement agreement for e-signature through the firm’s existing portal
@@ -122,6 +126,7 @@
         '<input type="hidden" name="rights_period_status" value="">' +
         '<input type="hidden" name="next_step" value="">' +
         '<input type="hidden" name="docs_required" value="Driver’s license; Vehicle registration; Lease or purchase contract; Repair tickets / repair orders">' +
+        '<input type="hidden" name="fee_terms" value="All contingency. No upfront attorney fee. No retainer. If Lemon Law allows manufacturer fee recovery in addition to the client’s recovery, pursue that; otherwise 30% of gross recovery, not reduced by payoffs, mileage offsets, use deductions, or negative equity. Costs (if any) disclosed in engagement — not a retainer.">' +
         '<input type="text" name="_gotcha" class="intake-hp" tabindex="-1" autocomplete="off" aria-hidden="true">' +
 
         '<div class="intake-progress" aria-hidden="true">' +
