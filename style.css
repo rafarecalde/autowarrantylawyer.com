@@ -356,6 +356,12 @@ strong { font-weight: 700; color: var(--ink); }
 }
 
 /* ===== Multi-step intake ===== */
+.hero-form,
+.cr-wrap,
+.intake-form,
+.intake-panel {
+  overflow-anchor: none;
+}
 .intake-form {
   position: relative;
 }
@@ -511,8 +517,29 @@ strong { font-weight: 700; color: var(--ink); }
 .intake-form [hidden],
 .intake-actions [hidden],
 .intake-panel[hidden],
+.intake-panel.is-hidden-panel,
 .intake-form .is-hidden {
   display: none !important;
+}
+.intake-file-list {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+.intake-file-warn {
+  background: #FFF4E5;
+  border: 1.5px solid #F5A623;
+  color: #6B4A00;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+}
+.intake-result-kicker {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 8px;
 }
 .intake-result {
   padding: 8px 0 4px;
@@ -527,8 +554,7 @@ strong { font-weight: 700; color: var(--ink); }
   font-size: 0.88rem;
 }
 .intake-result-decline {
-  border-top: 3px solid var(--amber);
-  padding-top: 16px;
+  padding-top: 4px;
 }
 .cr-page .intake-form { margin-top: 8px; }
 .cr-page .intake-row-stack { grid-template-columns: 1fr 1fr; }

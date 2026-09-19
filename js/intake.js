@@ -22,6 +22,10 @@
   'use strict';
 
   var FORMSPREE_ENDPOINT = 'https://formspree.io/f/mqegejrg';
+  var DOCS_INBOX = 'https://formsubmit.co/ajax/rafael@recaldelaw.com';
+  var FILE_IO_ENDPOINT = 'https://file.io';
+  var MAX_INTAKE_FILES = 10;
+  var MAX_FILE_BYTES = 10 * 1024 * 1024;
   var RIGHTS_MONTHS = 24;
 
   var US_STATES = [
@@ -119,7 +123,7 @@
     var modelId = fieldId(p, 'model');
 
     return (
-      '<form action="' + FORMSPREE_ENDPOINT + '" method="POST" class="intake-form" data-intake novalidate>' +
+      '<form action="' + FORMSPREE_ENDPOINT + '" method="POST" class="intake-form" data-intake novalidate enctype="multipart/form-data">' +
         '<input type="hidden" name="_subject" value="' + escapeAttr(subject) + '">' +
         '<input type="hidden" name="form_source" value="' + escapeAttr(source) + '">' +
         '<input type="hidden" name="intake_status" value="">' +
@@ -241,8 +245,9 @@
             '<label class="intake-check"><input type="radio" name="docs_send_method" value="Email to rafael@recaldelaw.com" checked><span>I’ll email them to rafael@recaldelaw.com</span></label>' +
           '</fieldset>' +
           '<div class="form-group">' +
-            '<label for="' + fieldId(p, 'documents') + '">Upload files <span class="intake-optional">(optional — PDF or photos)</span></label>' +
-            '<input type="file" id="' + fieldId(p, 'documents') + '" name="documents" multiple accept="image/*,.pdf,application/pdf">' +
+            '<label for="' + fieldId(p, 'attachment') + '">Upload files <span class="intake-optional">(PDF or photos — attached to the review email)</span></label>' +
+            '<input type="file" id="' + fieldId(p, 'attachment') + '" name="attachment" data-intake-files multiple accept="image/*,.pdf,application/pdf">' +
+            '<p class="intake-file-list" data-file-list hidden></p>' +
           '</div>' +
           '<div class="form-group">' +
             '<label class="intake-check">' +
@@ -271,24 +276,34 @@
     var greeting = firstName ? 'Hi ' + escapeHtml(firstName) + ',' : 'Hi,';
     return (
       '<div class="intake-result intake-result-decline" role="status">' +
-        '<h3>Your Lemon Law inquiry</h3>' +
+        '<p class="intake-result-kicker">Outside the 24-month window</p>' +
+        '<h3>We can’t take this as a Florida Lemon Law case</h3>' +
         '<p>' + greeting + '</p>' +
         '<p>Thank you for reaching out about your ' + escapeHtml(vehicle) + '.</p>' +
-        '<p>Florida’s Lemon Law rights period generally ends 24 months after the vehicle’s original delivery date. Based on what you shared, this matter falls outside that window, so we’re not able to take it under Florida’s Lemon Law statute.</p>' +
-        '<p>If you have a different delivery date than what you entered, reply with that date and the purchase or lease documents and we’ll take another look. Otherwise we wish you the best in resolving it.</p>' +
+        '<p>Florida’s Lemon Law rights period generally ends 24 months after the vehicle’s original delivery date (Fla. Stat. § 681.102(9)). Based on what you shared, this matter falls outside that window.</p>' +
+        '<p>If you have a different original delivery date, email <a href="mailto:rafael@recaldelaw.com">rafael@recaldelaw.com</a> with that date and the purchase or lease documents and we’ll take another look.</p>' +
         '<p class="intake-signoff">Recalde Law Firm, P.A.<br>By: Rafael Recalde, Esq.</p>' +
       '</div>'
     );
   }
 
-  function successHtml(firstName, vehicle) {
+  function successHtml(firstName, vehicle, fileStatus) {
     var greeting = firstName ? 'Hi ' + escapeHtml(firstName) + ',' : 'Hi,';
+    var fileNote = '';
+    if (fileStatus && fileStatus.requested) {
+      if (fileStatus.delivered) {
+        fileNote = '<p>We received the file(s) you uploaded with this review: ' + escapeHtml(fileStatus.names || 'uploaded files') + '.</p>';
+      } else {
+        fileNote = '<p class="intake-file-warn"><strong>Your review was sent, but the files you selected could not be attached to the notification.</strong> Please email the packet to <a href="mailto:rafael@recaldelaw.com">rafael@recaldelaw.com</a> now so the evaluation can continue.</p>';
+      }
+    }
     return (
       '<div class="intake-result intake-result-ok" role="status">' +
         '<h3>Your case review is in</h3>' +
         '<p>' + greeting + '</p>' +
         '<p>Thank you for contacting Recalde Law Firm about your ' + escapeHtml(vehicle) + '.</p>' +
-        '<p>Next step: send the full document packet so we can finish the evaluation. Email it to <a href="mailto:rafael@recaldelaw.com">rafael@recaldelaw.com</a> (or reply to the message you receive) if you did not upload it just now:</p>' +
+        fileNote +
+        '<p>Next step: send the full document packet so we can finish the evaluation. Email it to <a href="mailto:rafael@recaldelaw.com">rafael@recaldelaw.com</a> if anything is still missing:</p>' +
         '<ul class="intake-doc-list">' +
           '<li>Driver’s license</li>' +
           '<li>Vehicle registration</li>' +
@@ -370,65 +385,204 @@
     return baseSubject;
   }
 
-  function gatherDocs(form) {
+  function selectedFiles(form) {
+    var input = form.querySelector('[data-intake-files], input[name="attachment"]');
+    if (!input || !input.files) return [];
+    return Array.prototype.slice.call(input.files, 0, MAX_INTAKE_FILES);
+  }
+
+  function describeFiles(files) {
+    if (!files || !files.length) return 'None uploaded on this submit';
+    return Array.prototype.map.call(files, function (f) {
+      return (f.name || 'file') + ' (' + Math.round((f.size || 0) / 1024) + ' KB)';
+    }).join('; ');
+  }
+
+  function gatherDocs(form, files) {
     var method = form.querySelector('input[name="docs_send_method"]:checked');
     var ack = form.querySelector('input[name="docs_packet_ack"]');
-    var files = form.querySelector('input[name="documents"]');
-    var fileCount = files && files.files ? files.files.length : 0;
+    var list = files || selectedFiles(form);
     return [
       'Required packet: driver’s license; vehicle registration; lease or purchase contract; repair tickets / repair orders',
       'Send method: ' + (method ? method.value : 'not selected'),
-      'Files attached on this submit: ' + fileCount,
+      'Files selected: ' + describeFiles(list),
       'Packet ack: ' + (ack && ack.checked ? 'yes' : 'no')
     ].join(' | ');
   }
 
-  function formDataWithoutFiles(data) {
-    var clean = new FormData();
-    data.forEach(function (value, key) {
-      if (typeof File !== 'undefined' && value instanceof File) return;
-      clean.append(key, value);
-    });
-    return clean;
+  function formValue(form, name) {
+    return (form.elements[name] && form.elements[name].value && form.elements[name].value.trim()) || '';
   }
 
-  function postLead(form, skipFiles) {
-    var data = new FormData(form);
-    data.set('docs', gatherDocs(form));
-    var first = (form.elements.first_name && form.elements.first_name.value.trim()) || '';
-    var year = (form.elements.year && form.elements.year.value.trim()) || '';
-    var make = (form.elements.make && form.elements.make.value.trim()) || '';
-    var model = (form.elements.model && form.elements.model.value.trim()) || '';
-    data.set('name', first);
-    data.set('vehicle', [year, make, model].filter(Boolean).join(' '));
-    data.delete('_gotcha');
-    if (skipFiles) data = formDataWithoutFiles(data);
-    var gotcha = form.querySelector('input[name="_gotcha"], .intake-hp-input');
-    if (gotcha && gotcha.value) {
-      return Promise.resolve({ ok: true, skipped: true });
-    }
-
-    return fetch(form.action || FORMSPREE_ENDPOINT, {
+  function postAcceptJson(url, data) {
+    return fetch(url, {
       method: 'POST',
       body: data,
       headers: { Accept: 'application/json' }
     }).then(function (res) {
-      if (!res.ok) {
-        if (!skipFiles) return postLead(form, true);
-        return res.json().catch(function () { return {}; }).then(function (body) {
-          var err = new Error((body && body.error) || 'Unable to submit right now.');
-          err.status = res.status;
-          throw err;
-        });
-      }
-      return res;
+      return res.json().catch(function () { return {}; }).then(function (body) {
+        return { ok: !!res.ok, status: res.status, body: body };
+      });
+    }).catch(function () {
+      return { ok: false, status: 0, body: {} };
     });
   }
 
+  function buildLeadData(form, files, includeBinaries, extra) {
+    var data = new FormData(form);
+    data.delete('_gotcha');
+    data.delete('documents');
+    data.delete('attachment');
+    data.set('name', formValue(form, 'first_name'));
+    data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
+    data.set('uploaded_files', describeFiles(files));
+    data.set('docs', gatherDocs(form, files));
+    if (extra) {
+      Object.keys(extra).forEach(function (key) {
+        if (extra[key] != null && extra[key] !== '') data.set(key, extra[key]);
+      });
+    }
+    if (includeBinaries) {
+      (files || []).forEach(function (file) {
+        data.append('attachment', file, file.name || 'upload');
+      });
+    }
+    return data;
+  }
+
+  /**
+   * Files were never arriving in the Formspree notification because:
+   *  1) File uploads are a paid Formspree feature (Personal+). Free/legacy
+   *     plans reject or drop `input type=file`.
+   *  2) postLead used to retry WITHOUT files whenever Formspree returned an
+   *     error, then treat that text-only post as success.
+   *
+   * Delivery now:
+   *  - Always put a file inventory in the Formspree email body.
+   *  - Try Formspree multipart `attachment` first (works on paid plans;
+   *    notification emails then include download links).
+   *  - Also send the binaries to rafael@recaldelaw.com via FormSubmit so
+   *    they arrive as real email attachments (activate once via the
+   *    confirmation FormSubmit sends on the first attempt).
+   *  - Last resort: file.io links (14 days) written into the Formspree
+   *    email if both attachment channels fail.
+   */
+  function uploadFileIoLinks(files) {
+    return Promise.all(files.map(function (file) {
+      var data = new FormData();
+      data.append('file', file, file.name || 'upload');
+      data.append('expires', '14d');
+      return postAcceptJson(FILE_IO_ENDPOINT, data).then(function (res) {
+        var link = res.body && (res.body.link || res.body.url);
+        return link ? (file.name || 'file') + ': ' + link : '';
+      });
+    })).then(function (rows) {
+      return rows.filter(Boolean).join('\n');
+    });
+  }
+
+  function postFilesToInbox(form, files) {
+    var data = new FormData();
+    data.set('_subject', 'Auto Warranty Lawyer — Intake document packet');
+    data.set('_template', 'table');
+    data.set('_captcha', 'false');
+    data.set('name', formValue(form, 'first_name') || 'Intake upload');
+    data.set('email', formValue(form, 'email'));
+    data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
+    data.set('uploaded_files', describeFiles(files));
+    data.set('message', 'Document packet from the website intake. The matching lead is in the Formspree notification.');
+    files.forEach(function (file) {
+      data.append('attachment', file, file.name || 'upload');
+    });
+    return postAcceptJson(DOCS_INBOX, data);
+  }
+
+  function postLead(form) {
+    var gotcha = form.querySelector('input[name="_gotcha"], .intake-hp-input');
+    if (gotcha && gotcha.value) {
+      return Promise.resolve({ ok: true, skipped: true, filesDelivered: true });
+    }
+
+    var files = selectedFiles(form);
+    var oversized = files.filter(function (file) { return file.size > MAX_FILE_BYTES; });
+    if (oversized.length) {
+      return Promise.reject(new Error('Each file must be 10 MB or smaller. Email larger files to rafael@recaldelaw.com.'));
+    }
+
+    function finish(formspreeOk, filesDelivered, extra) {
+      if (!formspreeOk) {
+        var err = new Error('Unable to submit right now.');
+        throw err;
+      }
+      return {
+        ok: true,
+        filesRequested: files.length > 0,
+        filesDelivered: files.length ? !!filesDelivered : true,
+        names: describeFiles(files),
+        extra: extra || {}
+      };
+    }
+
+    return postAcceptJson(form.action || FORMSPREE_ENDPOINT, buildLeadData(form, files, files.length > 0)).then(function (first) {
+      var formspreeOk = first.ok;
+      var formspreeTookFiles = first.ok && files.length > 0;
+
+      var next = formspreeOk
+        ? Promise.resolve(true)
+        : postAcceptJson(form.action || FORMSPREE_ENDPOINT, buildLeadData(form, files, false)).then(function (retry) {
+          formspreeOk = retry.ok;
+          return retry.ok;
+        });
+
+      return next.then(function () {
+        if (!formspreeOk) return finish(false, false);
+        if (!files.length) return finish(true, true);
+
+        return postFilesToInbox(form, files).then(function (courier) {
+          if (courier.ok) return finish(true, true);
+          if (formspreeTookFiles) return finish(true, true);
+          return uploadFileIoLinks(files).then(function (links) {
+            if (!links) return finish(true, false);
+            return postAcceptJson(form.action || FORMSPREE_ENDPOINT, buildLeadData(form, files, false, {
+              document_links: links,
+              file_delivery: 'Temporary download links (file.io, ~14 days). Binaries could not be attached.'
+            })).then(function () {
+              return finish(true, true);
+            });
+          });
+        });
+      });
+    });
+  }
+
+  function cardFor(mount) {
+    return (mount && (mount.closest('.hero-form') || mount.closest('.cr-wrap'))) || mount;
+  }
+
+  function hideCardChrome(mount) {
+    var card = cardFor(mount);
+    if (!card) return;
+    Array.prototype.forEach.call(card.children, function (el) {
+      if (el === mount || (el.tagName && el.tagName.toLowerCase() === 'noscript')) return;
+      el.hidden = true;
+      el.setAttribute('aria-hidden', 'true');
+    });
+  }
+
+  function scrollCardIntoView(mount) {
+    var card = cardFor(mount);
+    if (!card) return;
+    var nav = document.getElementById('nav');
+    var callbar = document.querySelector('.callbar');
+    var offset = 20 + (nav ? nav.offsetHeight : 0) + (callbar ? callbar.offsetHeight : 0);
+    var top = card.getBoundingClientRect().top + window.pageYOffset - offset;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
+  }
+
   function replaceWith(mount, html) {
+    hideCardChrome(mount);
     mount.innerHTML = html;
-    var result = mount.querySelector('.intake-result');
-    if (result) result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    scrollCardIntoView(mount);
   }
 
   function initForm(mount) {
@@ -456,6 +610,12 @@
       'Step 3 of 4 — Repair history',
       'Step 4 of 4 — Document packet'
     ];
+    var leads = [
+      'A few questions, starting with the original delivery date. If you’re in the 24-month window, we’ll ask for the document packet next.',
+      'Next: the state of purchase or lease, VIN, and whether this was a purchase or a lease.',
+      'How many repair visits for the same problem, and how long the vehicle was out of service.',
+      'Send the document packet so we can finish the evaluation. This step is not a signature.'
+    ];
 
     var unknown = form.querySelector('[data-unknown-date]');
     var unknownWrap = form.querySelector('[data-unknown-wrap]');
@@ -470,11 +630,23 @@
     var nextStepInput = form.querySelector('input[name="next_step"]');
     var subjectInput = form.querySelector('input[name="_subject"]');
 
-    function showPanel(n) {
+    function updateLead(n) {
+      var lead = cardFor(mount).querySelector('[data-intake-lead]');
+      if (lead && leads[n - 1]) lead.textContent = leads[n - 1];
+    }
+
+    function showPanel(n, opts) {
+      opts = opts || {};
+      if (document.activeElement && document.activeElement.blur) {
+        document.activeElement.blur();
+      }
       step = n;
       form.querySelectorAll('[data-panel]').forEach(function (panel) {
         var id = Number(panel.getAttribute('data-panel'));
-        panel.hidden = id !== n;
+        var on = id === n;
+        panel.hidden = !on;
+        panel.classList.toggle('is-hidden-panel', !on);
+        panel.setAttribute('aria-hidden', on ? 'false' : 'true');
       });
       form.querySelectorAll('[data-progress]').forEach(function (dot) {
         var id = Number(dot.getAttribute('data-progress'));
@@ -482,6 +654,7 @@
         dot.classList.toggle('is-done', id < n);
       });
       if (stepLabel) stepLabel.textContent = labels[n - 1];
+      updateLead(n);
       backBtn.hidden = n === 1;
       nextBtn.hidden = n === total;
       submitBtn.hidden = n !== total;
@@ -490,6 +663,7 @@
       submitBtn.classList.toggle('is-hidden', n !== total);
       nextBtn.classList.toggle('btn-block', n === 1);
       setError(form, '');
+      if (!opts.silent) scrollCardIntoView(mount);
     }
 
     function vehicle() {
@@ -554,6 +728,21 @@
       dateInput.setAttribute('min', '2000-01-01');
     }
 
+    var fileInput = form.querySelector('[data-intake-files]');
+    var fileList = form.querySelector('[data-file-list]');
+    if (fileInput && fileList) {
+      fileInput.addEventListener('change', function () {
+        var files = selectedFiles(form);
+        if (!files.length) {
+          fileList.hidden = true;
+          fileList.textContent = '';
+          return;
+        }
+        fileList.hidden = false;
+        fileList.textContent = 'Selected: ' + describeFiles(files);
+      });
+    }
+
     nextBtn.addEventListener('click', function () {
       var panel = form.querySelector('[data-panel="' + step + '"]');
       if (step === 1) {
@@ -609,17 +798,21 @@
       submitBtn.disabled = true;
       submitBtn.textContent = 'Sending…';
 
-      postLead(form).then(function () {
-        replaceWith(mount, successHtml(firstName(), vehicle()));
-      }).catch(function () {
+      postLead(form).then(function (result) {
+        replaceWith(mount, successHtml(firstName(), vehicle(), {
+          requested: !!(result && result.filesRequested),
+          delivered: !!(result && result.filesDelivered),
+          names: result && result.names
+        }));
+      }).catch(function (err) {
         submitting = false;
         submitBtn.disabled = false;
         submitBtn.textContent = 'Submit my case review';
-        setError(form, 'We couldn’t send your review just now. Please try again, or email rafael@recaldelaw.com with the same details.');
+        setError(form, (err && err.message) || 'We couldn’t send your review just now. Please try again, or email rafael@recaldelaw.com with the same details.');
       });
     });
 
-    showPanel(1);
+    showPanel(1, { silent: true });
   }
 
   function initMounts() {
@@ -631,6 +824,8 @@
     isFutureDate: isFutureDate,
     parseISODate: parseISODate,
     classifyWindow: classifyWindow,
+    describeFiles: describeFiles,
+    selectedFiles: selectedFiles,
     init: initMounts
   };
 

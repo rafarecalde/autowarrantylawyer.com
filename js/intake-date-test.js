@@ -16,6 +16,7 @@ function extract(fnName) {
 eval(extract('parseISODate'));
 eval(extract('isOutsideRightsPeriod'));
 eval(extract('isFutureDate'));
+eval(extract('describeFiles'));
 
 function d(y, m, day) {
   return new Date(y, m - 1, day);
@@ -48,6 +49,14 @@ assert('honeypot is visually-hidden wrapper', src.indexOf('class="intake-hp"') !
 assert('honeypot is tabindex -1', src.indexOf('tabindex="-1"') !== -1, true);
 assert('honeypot autocomplete off', /name="_gotcha"[^>]*autocomplete="off"|autocomplete="off"[^>]*name="_gotcha"/.test(src), true);
 assert('progress steps have no inner 1234 text', !/>1<\/span>/.test(src) && !/>2<\/span>/.test(src), true);
+assert('form is multipart', src.indexOf('enctype="multipart/form-data"') !== -1, true);
+assert('file field is attachment', src.indexOf('name="attachment"') !== -1, true);
+assert('does not silently strip files on retry', !/if \(!skipFiles\) return postLead\(form, true\)/.test(src), true);
+assert('has inbox courier for files', src.indexOf('formsubmit.co/ajax/rafael@recaldelaw.com') !== -1, true);
+assert('decline is a designed screen', src.indexOf('Outside the 24-month window') !== -1, true);
+assert('initial showPanel is silent', src.indexOf('showPanel(1, { silent: true })') !== -1, true);
+assert('describe empty files', describeFiles([]), 'None uploaded on this submit');
+assert('describe named file', describeFiles([{ name: 'dl.pdf', size: 2048 }]), 'dl.pdf (2 KB)');
 
 if (failed) {
   console.error(failed + ' failed');
