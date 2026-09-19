@@ -73,7 +73,10 @@ assert(
 assert('docs_send_method is optional Google Form', src.indexOf('Google Form offered (optional Drive)') !== -1, true);
 assert('awkward upload-only sentence is not in intake.js', src.indexOf('The Google Form is upload only — no name, email, or vehicle questions') === -1, true);
 assert('awkward upload-only fragment is not in intake.js', src.indexOf('upload only — no name, email, or vehicle questions') === -1, true);
-assert('Formspree _subject is unique per lead', src.indexOf('function uniqueLeadSubject') !== -1 && src.indexOf("data.set('_subject'") !== -1 && src.indexOf('name="lead_id"') !== -1, true);
+assert('Formspree _subject is unique per lead', src.indexOf('function uniqueLeadSubject') !== -1 && src.indexOf("data.set('_subject'") !== -1, true);
+assert('form_source is kept as a posted field', src.indexOf('name="form_source"') !== -1 && src.indexOf("data.set('form_source'") !== -1, true);
+assert('initial _subject is empty until submit', src.indexOf('name="_subject" value=""') !== -1, true);
+assert('Gmail subject format uses name and vehicle', src.indexOf('Auto Warranty Lawyer — Case Review') !== -1 && src.indexOf("parts.push(name)") !== -1 && src.indexOf('parts.push(vehicle)') !== -1 && src.indexOf('compactStamp') !== -1, true);
 assert('Google Form opens in a new tab', src.indexOf('target="_blank"') !== -1 && src.indexOf('data-gform-cta') !== -1, true);
 assert('three on-site steps', src.indexOf('var total = 3') !== -1 && src.indexOf('data-panel="4"') === -1, true);
 assert('step 1 label is delivery date', src.indexOf('Step 1 of 3 — Delivery date') !== -1, true);
@@ -112,6 +115,49 @@ assertNo('client form omits awkward upload-only line', formHtmlFn, 'upload only 
 assertNo('client success omits awkward upload-only line', successFn, 'upload only — no name, email, or vehicle questions');
 assertNo('client form omits just-upload copy', formHtmlFn, 'just upload no name nothing');
 assertNo('client success omits just-upload copy', successFn, 'just upload no name nothing');
+
+eval(extract('formValue'));
+eval(extract('compactStamp'));
+eval(extract('uniqueLeadSubject'));
+
+function mockForm(values) {
+  var fields = {};
+  Object.keys(values).forEach(function (k) {
+    fields[k] = { type: 'text', value: values[k] };
+  });
+  return { elements: fields };
+}
+
+var when = new Date(Date.UTC(2026, 8, 19, 15, 22, 41));
+var jane = mockForm({
+  first_name: 'Jane',
+  year: '2025',
+  make: 'Chevrolet',
+  model: 'Equinox',
+  form_source: 'homepage-hero'
+});
+assert(
+  'subject is name + vehicle + compact timestamp',
+  uniqueLeadSubject(jane, 'Auto Warranty Lawyer — Case Review (Hero Form)', 'in_window', when),
+  'Auto Warranty Lawyer — Case Review — Jane — 2025 Chevrolet Equinox — 2026-09-19 15:22:41 UTC'
+);
+assert(
+  'subject ignores shared Hero Form base label',
+  uniqueLeadSubject(jane, 'Auto Warranty Lawyer — Case Review (Hero Form)', 'in_window', when).indexOf('(Hero Form)') === -1,
+  true
+);
+var later = new Date(Date.UTC(2026, 8, 19, 16, 4, 8));
+assert(
+  'same lead at another second gets a different subject',
+  uniqueLeadSubject(jane, '', 'in_window', when) !== uniqueLeadSubject(jane, '', 'in_window', later),
+  true
+);
+var empty = mockForm({});
+assert(
+  'subject is still unique without name or vehicle',
+  uniqueLeadSubject(empty, '', 'out_of_window', when),
+  'Auto Warranty Lawyer — Case Review — 2026-09-19 15:22:41 UTC — Outside 24-month window'
+);
 
 if (failed) {
   console.error(failed + ' failed');

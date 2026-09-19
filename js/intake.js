@@ -129,16 +129,13 @@
     var p = opts.idPrefix;
     var compact = !!opts.compact;
     var source = opts.source || 'case-review';
-    var subject = opts.subject || 'Auto Warranty Lawyer — Case Review';
     var yearId = fieldId(p, 'year');
     var makeId = fieldId(p, 'make');
     var modelId = fieldId(p, 'model');
 
     return (
       '<form action="' + FORMSPREE_ENDPOINT + '" method="POST" class="intake-form" data-intake novalidate>' +
-        '<input type="hidden" name="_subject" value="' + escapeAttr(subject) + '">' +
-        '<input type="hidden" name="subject_base" value="' + escapeAttr(subject) + '">' +
-        '<input type="hidden" name="lead_id" value="">' +
+        '<input type="hidden" name="_subject" value="">' +
         '<input type="hidden" name="form_source" value="' + escapeAttr(source) + '">' +
         '<input type="hidden" name="intake_status" value="">' +
         '<input type="hidden" name="rights_period_status" value="">' +
@@ -346,39 +343,35 @@
     return 'in_window';
   }
 
-  function leadId() {
-    var rand = '';
-    try {
-      if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-        var buf = new Uint8Array(4);
-        crypto.getRandomValues(buf);
-        rand = Array.prototype.map.call(buf, function (b) {
-          return ('0' + b.toString(16)).slice(-2);
-        }).join('');
-      }
-    } catch (e) {}
-    if (!rand) rand = Math.random().toString(16).slice(2, 10);
-    return 'awl-' + Date.now().toString(36) + '-' + rand;
+  function compactStamp(now) {
+    var d = now || new Date();
+    function pad(n) {
+      return String(n).padStart(2, '0');
+    }
+    return (
+      d.getUTCFullYear() + '-' +
+      pad(d.getUTCMonth() + 1) + '-' +
+      pad(d.getUTCDate()) + ' ' +
+      pad(d.getUTCHours()) + ':' +
+      pad(d.getUTCMinutes()) + ':' +
+      pad(d.getUTCSeconds()) + ' UTC'
+    );
   }
 
-  function ensureLeadId(form) {
-    var el = form.querySelector('input[name="lead_id"]');
-    if (!el) return leadId();
-    if (!String(el.value || '').trim()) el.value = leadId();
-    return el.value;
-  }
-
-  function uniqueLeadSubject(form, baseSubject, status) {
+  /**
+   * Unique Gmail subject so Formspree leads do not thread together.
+   * Shared subjects (e.g. "… (Hero Form)") caused later leads to vanish
+   * into Trash with an earlier thread.
+   * Format: Auto Warranty Lawyer — Case Review — {first_name} — {year make model} — {timestamp}
+   * form_source stays a separate posted field.
+   */
+  function uniqueLeadSubject(form, baseSubject, status, now) {
     var name = formValue(form, 'first_name');
-    var email = formValue(form, 'email');
     var vehicle = [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' ');
-    var id = ensureLeadId(form);
-    var parts = [baseSubject || 'Auto Warranty Lawyer — Case Review'];
+    var parts = ['Auto Warranty Lawyer — Case Review'];
     if (name) parts.push(name);
     if (vehicle) parts.push(vehicle);
-    if (email) parts.push(email);
-    parts.push(new Date().toISOString());
-    parts.push(id);
+    parts.push(compactStamp(now));
     var out = parts.join(' — ');
     if (status === 'out_of_window') return out + ' — Outside 24-month window';
     if (status === 'not_sure') return out + ' — Delivery date not confirmed';
@@ -429,9 +422,8 @@
     data.set('name', formValue(form, 'first_name'));
     data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
     data.set('uploaded_files', 'none — not attached to Formspree');
-    data.set('lead_id', ensureLeadId(form));
-    data.set('_subject', uniqueLeadSubject(form, formValue(form, 'subject_base'), formValue(form, 'intake_status')));
-    data.delete('subject_base');
+    data.set('form_source', formValue(form, 'form_source') || 'case-review');
+    data.set('_subject', uniqueLeadSubject(form, '', formValue(form, 'intake_status')));
 
     if (formValue(form, 'intake_status') === 'out_of_window') {
       data.set('docs_send_method', 'Not requested — declined outside 24-month window');
@@ -500,13 +492,11 @@
   function initForm(mount) {
     var prefix = mount.getAttribute('data-id-prefix') || 'intake';
     var source = mount.getAttribute('data-intake-source') || 'case-review';
-    var subject = mount.getAttribute('data-intake-subject') || 'Auto Warranty Lawyer — Case Review';
     var compact = mount.getAttribute('data-compact') === 'true';
 
     mount.innerHTML = buildFormHtml({
       idPrefix: prefix,
       source: source,
-      subject: subject,
       compact: compact
     });
 
@@ -606,7 +596,7 @@
           nextStepInput.value = 'Lead in. VIN not collected. Packet optional via Drive form: driver’s license, vehicle registration, lease or purchase contract, repair tickets. This Formspree email has no file attachments. Do NOT send engagement or fee-to-sign until the packet is in. Then explain fees; if they reply “I want to proceed”, send engagement for e-sign (TODO: no e-sign/portal in this repo — use existing recalde-portal or manual send). Signed engagement → open file.';
         }
       }
-      if (subjectInput) subjectInput.value = uniqueLeadSubject(form, subject, status);
+      if (subjectInput) subjectInput.value = uniqueLeadSubject(form, '', status);
     }
 
     function showDeclineAndSubmit() {
@@ -717,6 +707,7 @@
     classifyWindow: classifyWindow,
     gatherDocs: gatherDocs,
     uniqueLeadSubject: uniqueLeadSubject,
+    compactStamp: compactStamp,
     DOCS_GOOGLE_FORM: DOCS_GOOGLE_FORM,
     DOCS_SEND_METHOD: DOCS_SEND_METHOD,
     RIGHTS_MONTHS: RIGHTS_MONTHS,
