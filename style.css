@@ -331,8 +331,12 @@ strong { font-weight: 700; color: var(--ink); }
   box-shadow: 0 0 0 3px rgba(30,106,229,.12);
 }
 .hero-form .intake-check input,
-.hero-form .intake-hp {
+.hero-form .intake-hp,
+.hero-form input[type="file"] {
   width: auto;
+}
+.hero-form input[type="file"] {
+  width: 100%;
 }
 .hero-form .form-note {
   font-size: 0.78rem;
