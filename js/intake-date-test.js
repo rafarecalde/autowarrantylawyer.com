@@ -17,6 +17,7 @@ eval(extract('parseISODate'));
 eval(extract('isOutsideRightsPeriod'));
 eval(extract('isFutureDate'));
 eval(extract('describeFiles'));
+eval(extract('fileDeliveryLine'));
 
 function d(y, m, day) {
   return new Date(y, m - 1, day);
@@ -51,8 +52,14 @@ assert('honeypot autocomplete off', /name="_gotcha"[^>]*autocomplete="off"|autoc
 assert('progress steps have no inner 1234 text', !/>1<\/span>/.test(src) && !/>2<\/span>/.test(src), true);
 assert('form is multipart', src.indexOf('enctype="multipart/form-data"') !== -1, true);
 assert('file field is attachment', src.indexOf('name="attachment"') !== -1, true);
-assert('does not silently strip files on retry', !/if \(!skipFiles\) return postLead\(form, true\)/.test(src), true);
+assert('does not silently strip files on retry', src.indexOf('formDataWithoutFiles') === -1 && !/if \(!skipFiles\) return postLead\(form, true\)/.test(src), true);
+assert('never claims Files attached from input count', src.indexOf('Files attached on this submit') === -1, true);
+assert('does not POST binaries to Formspree', src.indexOf('data.append(\'attachment\'') === -1 || src.indexOf('Never POST binaries to Formspree') !== -1, true);
+assert('fail-closed upload copy', src.indexOf('Upload failed — email the packet to rafael@recaldelaw.com') !== -1, true);
 assert('has inbox courier for files', src.indexOf('formsubmit.co/ajax/rafael@recaldelaw.com') !== -1, true);
+assert('no-file delivery line is honest', fileDeliveryLine([], { status: 'none' }).indexOf('none') !== -1, true);
+assert('failed delivery line is honest', fileDeliveryLine([{ name: 'dl.pdf', size: 1024 }], { status: 'failed' }).indexOf('NOT attached') !== -1, true);
+assert('delivered delivery line has links', fileDeliveryLine([{ name: 'dl.pdf', size: 1024 }], { status: 'delivered', links: 'https://file.io/abc' }).indexOf('https://file.io/abc') !== -1, true);
 assert('decline is a designed screen', src.indexOf('Outside the 24-month window') !== -1, true);
 assert('initial showPanel is silent', src.indexOf('showPanel(1, { silent: true })') !== -1, true);
 assert('describe empty files', describeFiles([]), 'None uploaded on this submit');

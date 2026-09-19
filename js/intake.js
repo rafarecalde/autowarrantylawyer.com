@@ -398,14 +398,31 @@
     }).join('; ');
   }
 
-  function gatherDocs(form, files) {
+  var UPLOAD_FAILED_MSG = 'Upload failed — email the packet to rafael@recaldelaw.com';
+
+  function wantsUploadNow(form) {
+    var method = form.querySelector('input[name="docs_send_method"]:checked');
+    return !!(method && method.value === 'Upload now');
+  }
+
+  function fileDeliveryLine(files, delivery) {
+    if (!files || !files.length) {
+      return 'Files delivered: none. Client chose to email the packet.';
+    }
+    if (delivery && delivery.status === 'delivered' && delivery.links) {
+      return 'Files delivered (download / inbox): ' + delivery.links;
+    }
+    return 'Files NOT attached to this email. Selected names only: ' + describeFiles(files) + '. Client was told: Upload failed — email the packet to rafael@recaldelaw.com';
+  }
+
+  function gatherDocs(form, files, delivery) {
     var method = form.querySelector('input[name="docs_send_method"]:checked');
     var ack = form.querySelector('input[name="docs_packet_ack"]');
-    var list = files || selectedFiles(form);
+    var list = files || [];
     return [
       'Required packet: driver’s license; vehicle registration; lease or purchase contract; repair tickets / repair orders',
       'Send method: ' + (method ? method.value : 'not selected'),
-      'Files selected: ' + describeFiles(list),
+      fileDeliveryLine(list, delivery),
       'Packet ack: ' + (ack && ack.checked ? 'yes' : 'no')
     ].join(' | ');
   }
@@ -428,44 +445,38 @@
     });
   }
 
-  function buildLeadData(form, files, includeBinaries, extra) {
+  function buildLeadData(form, files, delivery) {
     var data = new FormData(form);
     data.delete('_gotcha');
     data.delete('documents');
     data.delete('attachment');
     data.set('name', formValue(form, 'first_name'));
     data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
-    data.set('uploaded_files', describeFiles(files));
-    data.set('docs', gatherDocs(form, files));
-    if (extra) {
-      Object.keys(extra).forEach(function (key) {
-        if (extra[key] != null && extra[key] !== '') data.set(key, extra[key]);
-      });
-    }
-    if (includeBinaries) {
-      (files || []).forEach(function (file) {
-        data.append('attachment', file, file.name || 'upload');
-      });
+    data.set('docs', gatherDocs(form, files, delivery));
+    if (delivery && delivery.status === 'delivered' && delivery.links) {
+      data.set('document_links', delivery.links);
+      data.set('file_delivery', 'Delivered. Links or inbox note below — this Formspree email has no binary attachments.');
+      data.set('uploaded_files', describeFiles(files));
+    } else if (files && files.length) {
+      data.set('file_delivery', 'FAILED. No files attached to this email. Client was shown: ' + UPLOAD_FAILED_MSG);
+      data.set('uploaded_files', 'NOT ATTACHED. Selected: ' + describeFiles(files));
+    } else {
+      data.set('file_delivery', 'No website upload. Client will email the packet.');
+      data.set('uploaded_files', 'none');
     }
     return data;
   }
 
   /**
-   * Files were never arriving in the Formspree notification because:
-   *  1) File uploads are a paid Formspree feature (Personal+). Free/legacy
-   *     plans reject or drop `input type=file`.
-   *  2) postLead used to retry WITHOUT files whenever Formspree returned an
-   *     error, then treat that text-only post as success.
+   * Formspree free/basic drops or rejects file binaries and does not put
+   * them in Gmail. A Formspree 200 is NOT proof files arrived.
    *
-   * Delivery now:
-   *  - Always put a file inventory in the Formspree email body.
-   *  - Try Formspree multipart `attachment` first (works on paid plans;
-   *    notification emails then include download links).
-   *  - Also send the binaries to rafael@recaldelaw.com via FormSubmit so
-   *    they arrive as real email attachments (activate once via the
-   *    confirmation FormSubmit sends on the first attempt).
-   *  - Last resort: file.io links (14 days) written into the Formspree
-   *    email if both attachment channels fail.
+   * Never POST binaries to Formspree. Never retry-without-files and then
+   * claim “Files attached: N” from the input count.
+   *
+   * Upload-now path: host the files, put download URLs (or an inbox-courier
+   * note) in the Formspree text payload, then send the lead. If that fails,
+   * reject with UPLOAD_FAILED_MSG and do not show a success screen.
    */
   function uploadFileIoLinks(files) {
     return Promise.all(files.map(function (file) {
@@ -497,6 +508,31 @@
     return postAcceptJson(DOCS_INBOX, data);
   }
 
+  function deliverFiles(form, files) {
+    return uploadFileIoLinks(files).then(function (links) {
+      return postFilesToInbox(form, files).then(function (courier) {
+        if (links) {
+          return { status: 'delivered', links: links };
+        }
+        if (courier.ok) {
+          return {
+            status: 'delivered',
+            links: 'Emailed as attachments to rafael@recaldelaw.com (not attached to this Formspree message).'
+          };
+        }
+        return { status: 'failed', links: '' };
+      });
+    }).catch(function () {
+      return { status: 'failed', links: '' };
+    });
+  }
+
+  function postTextLead(form, files, delivery) {
+    return postAcceptJson(form.action || FORMSPREE_ENDPOINT, buildLeadData(form, files, delivery)).then(function (res) {
+      return !!res.ok;
+    });
+  }
+
   function postLead(form) {
     var gotcha = form.querySelector('input[name="_gotcha"], .intake-hp-input');
     if (gotcha && gotcha.value) {
@@ -504,53 +540,41 @@
     }
 
     var files = selectedFiles(form);
+    var uploadNow = wantsUploadNow(form);
     var oversized = files.filter(function (file) { return file.size > MAX_FILE_BYTES; });
     if (oversized.length) {
-      return Promise.reject(new Error('Each file must be 10 MB or smaller. Email larger files to rafael@recaldelaw.com.'));
+      return Promise.reject(new Error(UPLOAD_FAILED_MSG));
+    }
+    if (uploadNow && !files.length) {
+      return Promise.reject(new Error(UPLOAD_FAILED_MSG));
     }
 
-    function finish(formspreeOk, filesDelivered, extra) {
-      if (!formspreeOk) {
-        var err = new Error('Unable to submit right now.');
-        throw err;
-      }
+    function succeed(delivery) {
       return {
         ok: true,
         filesRequested: files.length > 0,
-        filesDelivered: files.length ? !!filesDelivered : true,
+        filesDelivered: !files.length || (delivery && delivery.status === 'delivered'),
         names: describeFiles(files),
-        extra: extra || {}
+        links: delivery && delivery.links
       };
     }
 
-    return postAcceptJson(form.action || FORMSPREE_ENDPOINT, buildLeadData(form, files, files.length > 0)).then(function (first) {
-      var formspreeOk = first.ok;
-      var formspreeTookFiles = first.ok && files.length > 0;
+    if (!files.length) {
+      return postTextLead(form, [], { status: 'none' }).then(function (ok) {
+        if (!ok) throw new Error('Unable to submit right now.');
+        return succeed({ status: 'none' });
+      });
+    }
 
-      var next = formspreeOk
-        ? Promise.resolve(true)
-        : postAcceptJson(form.action || FORMSPREE_ENDPOINT, buildLeadData(form, files, false)).then(function (retry) {
-          formspreeOk = retry.ok;
-          return retry.ok;
+    return deliverFiles(form, files).then(function (delivery) {
+      if (uploadNow && delivery.status !== 'delivered') {
+        return postTextLead(form, files, delivery).catch(function () { return false; }).then(function () {
+          throw new Error(UPLOAD_FAILED_MSG);
         });
-
-      return next.then(function () {
-        if (!formspreeOk) return finish(false, false);
-        if (!files.length) return finish(true, true);
-
-        return postFilesToInbox(form, files).then(function (courier) {
-          if (courier.ok) return finish(true, true);
-          if (formspreeTookFiles) return finish(true, true);
-          return uploadFileIoLinks(files).then(function (links) {
-            if (!links) return finish(true, false);
-            return postAcceptJson(form.action || FORMSPREE_ENDPOINT, buildLeadData(form, files, false, {
-              document_links: links,
-              file_delivery: 'Temporary download links (file.io, ~14 days). Binaries could not be attached.'
-            })).then(function () {
-              return finish(true, true);
-            });
-          });
-        });
+      }
+      return postTextLead(form, files, delivery).then(function (ok) {
+        if (!ok) throw new Error('Unable to submit right now.');
+        return succeed(delivery);
       });
     });
   }
@@ -781,6 +805,10 @@
       }
       var panel = form.querySelector('[data-panel="' + step + '"]');
       if (!validatePanel(panel)) return;
+      if (wantsUploadNow(form) && !selectedFiles(form).length) {
+        setError(form, UPLOAD_FAILED_MSG);
+        return;
+      }
 
       var status = classifyWindow(form);
       if (status === 'out_of_window') {
@@ -826,6 +854,9 @@
     classifyWindow: classifyWindow,
     describeFiles: describeFiles,
     selectedFiles: selectedFiles,
+    fileDeliveryLine: fileDeliveryLine,
+    wantsUploadNow: wantsUploadNow,
+    UPLOAD_FAILED_MSG: UPLOAD_FAILED_MSG,
     init: initMounts
   };
 
