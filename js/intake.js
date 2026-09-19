@@ -13,6 +13,10 @@
  * Manufacturer fee recovery when the statute allows; otherwise 30% of gross
  * recovery. Out-of-pocket items are costs disclosed in the engagement.
  *
+ * Document packet: clients upload on the firm’s Google Form (Drive). This
+ * page never posts binaries, never uses third-party file hosts, and never
+ * claims files were attached to Formspree.
+ *
  * TODO(esign): This repo has no recalde-portal, DocuSign, or other e-sign integration.
  * Do not invent one here. After the packet is in and the lead replies “I want to proceed”,
  * send the engagement agreement for e-signature through the firm’s existing portal
@@ -22,15 +26,8 @@
   'use strict';
 
   var FORMSPREE_ENDPOINT = 'https://formspree.io/f/mqegejrg';
-  var DOCS_INBOX = 'https://formsubmit.co/ajax/rafael@recaldelaw.com';
-  var LITTERBOX_ENDPOINT = 'https://litterbox.catbox.moe/resources/internals/api.php';
-  var TMPFILES_ENDPOINT = 'https://tmpfiles.org/api/v1/upload';
-  var FILEBIN_ORIGIN = 'https://filebin.net';
-  var GOFILE_SERVERS = 'https://api.gofile.io/servers';
-  var HOST_TIMEOUT_MS = 12000;
-  var TMPFILES_EXPIRE_SECONDS = 172800;
-  var MAX_INTAKE_FILES = 10;
-  var MAX_FILE_BYTES = 10 * 1024 * 1024;
+  var DOCS_GOOGLE_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSei5FtsiCdXDqo9vn8Meu4mwtVosAs9VSMWX0OKjUOjwVWnKA/viewform';
+  var DOCS_SEND_METHOD = 'Google Form (Drive upload)';
   var RIGHTS_MONTHS = 24;
 
   var US_STATES = [
@@ -118,6 +115,16 @@
     return prefix + '-' + name;
   }
 
+  function googleFormCta(label) {
+    return (
+      '<a class="btn btn-primary btn-block intake-gform-cta" href="' +
+      escapeAttr(DOCS_GOOGLE_FORM) +
+      '" target="_blank" rel="noopener noreferrer" data-gform-cta>' +
+      escapeHtml(label) +
+      '</a>'
+    );
+  }
+
   function buildFormHtml(opts) {
     var p = opts.idPrefix;
     var compact = !!opts.compact;
@@ -128,13 +135,15 @@
     var modelId = fieldId(p, 'model');
 
     return (
-      '<form action="' + FORMSPREE_ENDPOINT + '" method="POST" class="intake-form" data-intake novalidate enctype="multipart/form-data">' +
+      '<form action="' + FORMSPREE_ENDPOINT + '" method="POST" class="intake-form" data-intake novalidate>' +
         '<input type="hidden" name="_subject" value="' + escapeAttr(subject) + '">' +
         '<input type="hidden" name="form_source" value="' + escapeAttr(source) + '">' +
         '<input type="hidden" name="intake_status" value="">' +
         '<input type="hidden" name="rights_period_status" value="">' +
         '<input type="hidden" name="next_step" value="">' +
         '<input type="hidden" name="docs_required" value="Driver’s license; Vehicle registration; Lease or purchase contract; Repair tickets / repair orders">' +
+        '<input type="hidden" name="docs_send_method" value="' + escapeAttr(DOCS_SEND_METHOD) + '">' +
+        '<input type="hidden" name="docs_google_form" value="' + escapeAttr(DOCS_GOOGLE_FORM) + '">' +
         '<input type="hidden" name="fee_terms" value="All contingency. No upfront attorney fee. No retainer. If Lemon Law allows manufacturer fee recovery in addition to the client’s recovery, pursue that; otherwise 30% of gross recovery, not reduced by payoffs, mileage offsets, use deductions, or negative equity. Costs (if any) disclosed in engagement — not a retainer.">' +
         '<p class="intake-step-label" data-step-label>Step 1 of 4 — Delivery date</p>' +
         '<div class="intake-progress" aria-hidden="true">' +
@@ -236,7 +245,7 @@
         '</div>' +
 
         '<div class="intake-panel" data-panel="4" hidden>' +
-          '<p class="intake-docs-lead">To finish the evaluation, send this packet — email or upload:</p>' +
+          '<p class="intake-docs-lead">To finish the evaluation, send this packet:</p>' +
           '<ul class="intake-doc-list">' +
             '<li>Driver’s license</li>' +
             '<li>Vehicle registration</li>' +
@@ -244,15 +253,14 @@
             '<li>Repair tickets / repair orders</li>' +
           '</ul>' +
           '<p class="intake-hint">This step is the packet only — not a signature. After the documents are in, we’ll explain fees. If you then reply “I want to proceed,” we’ll send the engagement agreement for electronic signature.</p>' +
-          '<fieldset class="intake-fieldset">' +
-            '<legend>How will you send them?</legend>' +
-            '<label class="intake-check"><input type="radio" name="docs_send_method" value="Upload now"><span>Upload what I have now</span></label>' +
-            '<label class="intake-check"><input type="radio" name="docs_send_method" value="Email to rafael@recaldelaw.com" checked><span>I’ll email them to rafael@recaldelaw.com</span></label>' +
-          '</fieldset>' +
+          '<p class="intake-docs-secure">Upload the packet on the firm’s Google Form. Google requires you to be signed into a Google account to attach files. Files go to the firm’s Google Drive only — they are not attached to this case-review email.</p>' +
+          googleFormCta('Open secure upload form') +
+          '<p class="intake-gform-note">The form opens in a new tab. Come back here afterward and submit your case review so we have your contact details.</p>' +
           '<div class="form-group">' +
-            '<label for="' + fieldId(p, 'attachment') + '">Upload files <span class="intake-optional">(PDF or photos — download links go to the review email)</span></label>' +
-            '<input type="file" id="' + fieldId(p, 'attachment') + '" name="attachment" data-intake-files multiple accept="image/*,.pdf,application/pdf">' +
-            '<p class="intake-file-list" data-file-list hidden></p>' +
+            '<label class="intake-check">' +
+              '<input type="checkbox" name="docs_form_opened" value="Opened or will complete the Google Form" data-gform-ack required>' +
+              '<span>I opened the upload form (or will complete it) in the new tab.</span>' +
+            '</label>' +
           '</div>' +
           '<div class="form-group">' +
             '<label class="intake-check">' +
@@ -292,23 +300,16 @@
     );
   }
 
-  function successHtml(firstName, vehicle, fileStatus) {
+  function successHtml(firstName, vehicle) {
     var greeting = firstName ? 'Hi ' + escapeHtml(firstName) + ',' : 'Hi,';
-    var fileNote = '';
-    if (fileStatus && fileStatus.requested) {
-      if (fileStatus.delivered) {
-        fileNote = '<p>We received the file(s) you uploaded with this review: ' + escapeHtml(fileStatus.names || 'uploaded files') + '.</p>';
-      } else {
-        fileNote = '<p class="intake-file-warn"><strong>Your review was sent, but the files you selected could not be attached to the notification.</strong> Please email the packet to <a href="mailto:rafael@recaldelaw.com">rafael@recaldelaw.com</a> now so the evaluation can continue.</p>';
-      }
-    }
     return (
       '<div class="intake-result intake-result-ok" role="status">' +
         '<h3>Your case review is in</h3>' +
         '<p>' + greeting + '</p>' +
         '<p>Thank you for contacting Recalde Law Firm about your ' + escapeHtml(vehicle) + '.</p>' +
-        fileNote +
-        '<p>Next step: send the full document packet so we can finish the evaluation. Email it to <a href="mailto:rafael@recaldelaw.com">rafael@recaldelaw.com</a> if anything is still missing:</p>' +
+        '<p>Your contact details were sent to the firm. Files are not attached to that email. If you have not finished the Google Form yet, upload the packet there now — files go to the firm’s Google Drive only:</p>' +
+        '<p>' + googleFormCta('Open secure upload form') + '</p>' +
+        '<p>We still need this packet to finish the evaluation:</p>' +
         '<ul class="intake-doc-list">' +
           '<li>Driver’s license</li>' +
           '<li>Vehicle registration</li>' +
@@ -390,99 +391,27 @@
     return baseSubject;
   }
 
-  function selectedFiles(form) {
-    var input = form.querySelector('[data-intake-files], input[name="attachment"]');
-    if (!input || !input.files) return [];
-    return Array.prototype.slice.call(input.files, 0, MAX_INTAKE_FILES);
+  function formValue(form, name) {
+    var el = form.elements[name];
+    if (!el) return '';
+    if (el.type === 'checkbox') return el.checked ? String(el.value || '').trim() : '';
+    return (el.value && String(el.value).trim()) || '';
   }
 
-  function describeFiles(files) {
-    if (!files || !files.length) return 'None uploaded on this submit';
-    return Array.prototype.map.call(files, function (f) {
-      return (f.name || 'file') + ' (' + Math.round((f.size || 0) / 1024) + ' KB)';
-    }).join('; ');
+  function openedGoogleForm(form) {
+    var opened = form.querySelector('[data-gform-ack], input[name="docs_form_opened"]');
+    return !!(opened && opened.checked);
   }
 
-  var UPLOAD_FAILED_MSG = 'Upload failed — email the packet to rafael@recaldelaw.com';
-
-  function wantsUploadNow(form) {
-    var method = form.querySelector('input[name="docs_send_method"]:checked');
-    return !!(method && method.value === 'Upload now');
-  }
-
-  function isTrustedFileHost(hostname) {
-    var host = String(hostname || '').toLowerCase();
-    if (host.indexOf('www.') === 0) host = host.slice(4);
-    return host === 'litter.catbox.moe' ||
-      host === 'litterbox.catbox.moe' ||
-      host === 'files.catbox.moe' ||
-      host === 'tmpfiles.org' ||
-      host === 'filebin.net' ||
-      host === 'gofile.io';
-  }
-
-  function isHttpsDownloadUrl(value) {
-    if (!value || typeof value !== 'string') return false;
-    var trimmed = value.trim();
-    if (!/^https:\/\/[^\s/$.?#].[^\s]*$/.test(trimmed)) return false;
-    try {
-      var parsed = new URL(trimmed);
-      return parsed.protocol === 'https:' &&
-        isTrustedFileHost(parsed.hostname) &&
-        parsed.pathname &&
-        parsed.pathname.length > 1;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function firstHttpsUrl(text) {
-    var match = String(text || '').match(/https:\/\/[^\s"'<>\\]+/);
-    if (!match) return '';
-    var url = match[0].replace(/[.,;)]+$/, '');
-    return isHttpsDownloadUrl(url) ? url : '';
-  }
-
-  function countHttpsUrls(text) {
-    var matches = String(text || '').match(/https:\/\/[^\s"'<>\\]+/g);
-    if (!matches) return 0;
-    var n = 0;
-    for (var i = 0; i < matches.length; i++) {
-      var url = matches[i].replace(/[.,;)]+$/, '');
-      if (isHttpsDownloadUrl(url)) n += 1;
-    }
-    return n;
-  }
-
-  function hasDeliveredUrls(delivery, files) {
-    if (!delivery || delivery.status !== 'delivered' || !files || !files.length) return false;
-    return countHttpsUrls(delivery.links) >= files.length;
-  }
-
-  function fileDeliveryLine(files, delivery) {
-    if (!files || !files.length) {
-      return 'Files delivered: none. Client chose to email the packet.';
-    }
-    if (hasDeliveredUrls(delivery, files)) {
-      return 'Files delivered (download): ' + delivery.links;
-    }
-    return 'Files NOT attached to this email. Selected names only: ' + describeFiles(files) + '. Client was told: Upload failed — email the packet to rafael@recaldelaw.com';
-  }
-
-  function gatherDocs(form, files, delivery) {
-    var method = form.querySelector('input[name="docs_send_method"]:checked');
+  function gatherDocs(form) {
     var ack = form.querySelector('input[name="docs_packet_ack"]');
-    var list = files || [];
     return [
       'Required packet: driver’s license; vehicle registration; lease or purchase contract; repair tickets / repair orders',
-      'Send method: ' + (method ? method.value : 'not selected'),
-      fileDeliveryLine(list, delivery),
+      'Send method: ' + DOCS_SEND_METHOD,
+      'Files: none attached to this Formspree email. Client was sent to Google Form for packet upload to the firm’s Drive: ' + DOCS_GOOGLE_FORM,
+      'Opened or will complete Google Form: ' + (openedGoogleForm(form) ? 'yes' : 'no'),
       'Packet ack: ' + (ack && ack.checked ? 'yes' : 'no')
     ].join(' | ');
-  }
-
-  function formValue(form, name) {
-    return (form.elements[name] && form.elements[name].value && form.elements[name].value.trim()) || '';
   }
 
   function postAcceptJson(url, data) {
@@ -499,204 +428,40 @@
     });
   }
 
-  function buildLeadData(form, files, delivery) {
+  /**
+   * Formspree free/basic drops file binaries. This intake never uploads
+   * files from the browser. Step 4 sends the client to a Google Form
+   * (Drive). The Formspree payload is text only — never claim files were
+   * attached.
+   */
+  function buildLeadData(form) {
     var data = new FormData(form);
     data.delete('_gotcha');
     data.delete('documents');
     data.delete('attachment');
     data.set('name', formValue(form, 'first_name'));
     data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
-    data.set('docs', gatherDocs(form, files, delivery));
-    if (hasDeliveredUrls(delivery, files)) {
-      data.set('document_links', delivery.links);
-      data.set('file_delivery', 'Delivered. Clickable https download links below — this Formspree email has no binary attachments.');
-      data.set('uploaded_files', describeFiles(files));
-    } else if (files && files.length) {
-      data.set('file_delivery', 'FAILED. No verified https download URL. Client was shown: ' + UPLOAD_FAILED_MSG);
-      data.set('uploaded_files', 'NOT ATTACHED. Selected: ' + describeFiles(files));
-      if (delivery && firstHttpsUrl(delivery.links)) {
-        data.set('document_links', delivery.links);
-      }
+    data.set('uploaded_files', 'none — not attached to Formspree');
+
+    if (formValue(form, 'intake_status') === 'out_of_window') {
+      data.set('docs_send_method', 'Not requested — declined outside 24-month window');
+      data.set('docs', 'Documents not requested. Matter declined as outside 24-month window. This Formspree email has no file attachments.');
+      data.set('file_delivery', 'No files. This Formspree email has no attachments.');
+      data.delete('docs_google_form');
     } else {
-      data.set('file_delivery', 'No website upload. Client will email the packet.');
-      data.set('uploaded_files', 'none');
+      data.set('docs_send_method', DOCS_SEND_METHOD);
+      data.set('docs', gatherDocs(form));
+      data.set('docs_google_form', DOCS_GOOGLE_FORM);
+      data.set(
+        'file_delivery',
+        'No files attached to this Formspree email. Client was sent to Google Form for packet upload to the firm’s Drive.'
+      );
     }
     return data;
   }
 
-  /**
-   * Formspree free/basic drops or rejects file binaries and does not put
-   * them in Gmail. A Formspree 200 is NOT proof files arrived.
-   * FormSubmit often lists filenames in uploaded_files without attaching
-   * the binaries. A FormSubmit HTTP 200 is NEVER proof files arrived.
-   *
-   * Never POST binaries to Formspree. Never retry-without-files and then
-   * claim “Files attached: N” from the input count.
-   *
-   * Upload path: host each file on a CORS-friendly provider that returns a
-   * real https:// download URL. Verify the URL looks like https:// before
-   * success. Put those URLs in Formspree document_links / docs. If any file
-   * has no verified https URL, reject with UPLOAD_FAILED_MSG and do not
-   * show a success screen.
-   */
-  function fetchWithTimeout(url, options, ms) {
-    var ctrl = typeof AbortController === 'function' ? new AbortController() : null;
-    var timer = setTimeout(function () {
-      if (ctrl) ctrl.abort();
-    }, ms || HOST_TIMEOUT_MS);
-    var opts = {};
-    var key;
-    for (key in (options || {})) {
-      if (Object.prototype.hasOwnProperty.call(options, key)) opts[key] = options[key];
-    }
-    if (ctrl) opts.signal = ctrl.signal;
-    return fetch(url, opts).then(function (res) {
-      clearTimeout(timer);
-      return res;
-    }, function (err) {
-      clearTimeout(timer);
-      throw err;
-    });
-  }
-
-  function readFetchBody(res) {
-    return res.text().then(function (text) {
-      var json = {};
-      try { json = JSON.parse(text); } catch (e1) {}
-      return { ok: !!res.ok, status: res.status, text: text, json: json };
-    });
-  }
-
-  function postFormNoHeaders(url, data) {
-    return fetchWithTimeout(url, { method: 'POST', body: data }, HOST_TIMEOUT_MS)
-      .then(readFetchBody)
-      .catch(function () {
-        return { ok: false, status: 0, text: '', json: {} };
-      });
-  }
-
-  function randomBinId() {
-    var bytes = new Uint8Array(8);
-    if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-      crypto.getRandomValues(bytes);
-    } else {
-      for (var i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-    }
-    return Array.prototype.map.call(bytes, function (b) {
-      return ('0' + b.toString(16)).slice(-2);
-    }).join('');
-  }
-
-  function uploadLitterbox(file) {
-    var data = new FormData();
-    data.append('reqtype', 'fileupload');
-    data.append('time', '72h');
-    data.append('fileToUpload', file, file.name || 'upload');
-    return postFormNoHeaders(LITTERBOX_ENDPOINT, data).then(function (res) {
-      if (!res.ok) return '';
-      return firstHttpsUrl(res.text);
-    });
-  }
-
-  function uploadTmpfiles(file) {
-    var data = new FormData();
-    data.append('file', file, file.name || 'upload');
-    data.append('expire', String(TMPFILES_EXPIRE_SECONDS));
-    return postFormNoHeaders(TMPFILES_ENDPOINT, data).then(function (res) {
-      if (!res.ok || (res.json && res.json.status && res.json.status !== 'success')) return '';
-      var url = res.json && res.json.data && res.json.data.url;
-      if (url && /^http:\/\//i.test(url)) url = 'https://' + url.slice(7);
-      return firstHttpsUrl(url || '');
-    });
-  }
-
-  function uploadFilebin(file, binId) {
-    var name = encodeURIComponent(file.name || 'upload');
-    var href = FILEBIN_ORIGIN + '/' + encodeURIComponent(binId) + '/' + name;
-    var data = new FormData();
-    data.append('file', file, file.name || 'upload');
-    return postFormNoHeaders(href, data).then(function (res) {
-      var named = res.json && res.json.file && res.json.file.filename;
-      if (!(res.ok || res.status === 201) || !named) return '';
-      href = FILEBIN_ORIGIN + '/' + encodeURIComponent(binId) + '/' + encodeURIComponent(named);
-      return firstHttpsUrl(href);
-    });
-  }
-
-  function uploadGofile(file) {
-    return fetchWithTimeout(GOFILE_SERVERS, { method: 'GET' }, HOST_TIMEOUT_MS)
-      .then(readFetchBody)
-      .then(function (res) {
-        var servers = (res.json && res.json.data && res.json.data.servers) || [];
-        var server = servers[0] && servers[0].name;
-        if (!server || !/^[a-z0-9-]+$/i.test(server)) return '';
-        var data = new FormData();
-        data.append('file', file, file.name || 'upload');
-        return postFormNoHeaders('https://' + server + '.gofile.io/contents/uploadfile', data).then(function (up) {
-          if (!up.ok || (up.json && up.json.status && up.json.status !== 'ok')) return '';
-          var page = up.json && up.json.data && (up.json.data.downloadPage || up.json.data.link);
-          return firstHttpsUrl(page || '');
-        });
-      })
-      .catch(function () { return ''; });
-  }
-
-  function tryHosts(file, binId) {
-    var steps = [
-      function () { return uploadLitterbox(file); },
-      function () { return uploadTmpfiles(file); },
-      function () { return uploadFilebin(file, binId); },
-      function () { return uploadGofile(file); }
-    ];
-    return steps.reduce(function (prev, step) {
-      return prev.then(function (url) {
-        return url || step();
-      });
-    }, Promise.resolve(''));
-  }
-
-  function notifyInboxWithLinks(form, files, links) {
-    var data = new FormData();
-    data.set('_subject', 'Auto Warranty Lawyer — Intake document packet');
-    data.set('_template', 'table');
-    data.set('_captcha', 'false');
-    data.set('name', formValue(form, 'first_name') || 'Intake upload');
-    data.set('email', formValue(form, 'email'));
-    data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
-    data.set('uploaded_files', describeFiles(files));
-    data.set('document_links', links);
-    data.set('message', 'Download links for the website intake packet. Filenames and https links only — no attachments. The matching lead is in the Formspree notification.');
-    return postAcceptJson(DOCS_INBOX, data).catch(function () {
-      return { ok: false };
-    });
-  }
-
-  function deliverFiles(form, files) {
-    var binId = randomBinId();
-    return Promise.all(files.map(function (file) {
-      return tryHosts(file, binId).then(function (url) {
-        return { name: file.name || 'file', url: url };
-      });
-    })).then(function (rows) {
-      var lines = rows.filter(function (row) { return isHttpsDownloadUrl(row.url); })
-        .map(function (row) { return row.name + ': ' + row.url; });
-      var links = lines.join('\n');
-      var allOk = rows.length === files.length && rows.every(function (row) {
-        return isHttpsDownloadUrl(row.url);
-      });
-      if (!allOk) return { status: 'failed', links: links };
-      return notifyInboxWithLinks(form, files, links).then(function () {
-        return { status: 'delivered', links: links };
-      }, function () {
-        return { status: 'delivered', links: links };
-      });
-    }).catch(function () {
-      return { status: 'failed', links: '' };
-    });
-  }
-
-  function postTextLead(form, files, delivery) {
-    return postAcceptJson(form.action || FORMSPREE_ENDPOINT, buildLeadData(form, files, delivery)).then(function (res) {
+  function postTextLead(form) {
+    return postAcceptJson(form.action || FORMSPREE_ENDPOINT, buildLeadData(form)).then(function (res) {
       return !!res.ok;
     });
   }
@@ -704,46 +469,11 @@
   function postLead(form) {
     var gotcha = form.querySelector('input[name="_gotcha"], .intake-hp-input');
     if (gotcha && gotcha.value) {
-      return Promise.resolve({ ok: true, skipped: true, filesDelivered: true });
+      return Promise.resolve({ ok: true, skipped: true });
     }
-
-    var files = selectedFiles(form);
-    var uploadNow = wantsUploadNow(form);
-    var oversized = files.filter(function (file) { return file.size > MAX_FILE_BYTES; });
-    if (oversized.length) {
-      return Promise.reject(new Error(UPLOAD_FAILED_MSG));
-    }
-    if (uploadNow && !files.length) {
-      return Promise.reject(new Error(UPLOAD_FAILED_MSG));
-    }
-
-    function succeed(delivery) {
-      return {
-        ok: true,
-        filesRequested: files.length > 0,
-        filesDelivered: !files.length || hasDeliveredUrls(delivery, files),
-        names: describeFiles(files),
-        links: delivery && delivery.links
-      };
-    }
-
-    if (!files.length) {
-      return postTextLead(form, [], { status: 'none' }).then(function (ok) {
-        if (!ok) throw new Error('Unable to submit right now.');
-        return succeed({ status: 'none' });
-      });
-    }
-
-    return deliverFiles(form, files).then(function (delivery) {
-      if (!hasDeliveredUrls(delivery, files)) {
-        return postTextLead(form, files, delivery).catch(function () { return false; }).then(function () {
-          throw new Error(UPLOAD_FAILED_MSG);
-        });
-      }
-      return postTextLead(form, files, delivery).then(function (ok) {
-        if (!ok) throw new Error('Unable to submit right now.');
-        return succeed(delivery);
-      });
+    return postTextLead(form).then(function (ok) {
+      if (!ok) throw new Error('Unable to submit right now.');
+      return { ok: true };
     });
   }
 
@@ -806,7 +536,7 @@
       'A few questions, starting with the original delivery date. If you’re in the 24-month window, we’ll ask for the document packet next.',
       'Next: the state of purchase or lease, VIN, and whether this was a purchase or a lease.',
       'How many repair visits for the same problem, and how long the vehicle was out of service.',
-      'Send the document packet so we can finish the evaluation. This step is not a signature.'
+      'Upload the document packet on the firm’s Google Form so we can finish the evaluation. This step is not a signature.'
     ];
 
     var unknown = form.querySelector('[data-unknown-date]');
@@ -821,10 +551,18 @@
     var rightsInput = form.querySelector('input[name="rights_period_status"]');
     var nextStepInput = form.querySelector('input[name="next_step"]');
     var subjectInput = form.querySelector('input[name="_subject"]');
+    var gformAck = form.querySelector('[data-gform-ack]');
+    var gformCta = form.querySelector('[data-gform-cta]');
 
     function updateLead(n) {
       var lead = cardFor(mount).querySelector('[data-intake-lead]');
       if (lead && leads[n - 1]) lead.textContent = leads[n - 1];
+    }
+
+    function syncSubmitEnabled() {
+      var ready = openedGoogleForm(form);
+      submitBtn.disabled = !ready;
+      submitBtn.setAttribute('aria-disabled', ready ? 'false' : 'true');
     }
 
     function showPanel(n, opts) {
@@ -854,6 +592,8 @@
       nextBtn.classList.toggle('is-hidden', n === total);
       submitBtn.classList.toggle('is-hidden', n !== total);
       nextBtn.classList.toggle('btn-block', n === 1);
+      if (n === total) syncSubmitEnabled();
+      else submitBtn.disabled = false;
       setError(form, '');
       if (!opts.silent) scrollCardIntoView(mount);
     }
@@ -885,7 +625,7 @@
         if (status === 'out_of_window') {
           nextStepInput.value = 'Declined — do not request documents or send engagement.';
         } else {
-          nextStepInput.value = 'Await FULL document packet (driver’s license, vehicle registration, lease or purchase contract, repair tickets). Do NOT send engagement or fee-to-sign until the packet is in. Then explain fees; if they reply “I want to proceed”, send engagement for e-sign (TODO: no e-sign/portal in this repo — use existing recalde-portal or manual send). Signed engagement → open file.';
+          nextStepInput.value = 'Await FULL document packet via Google Form / Drive (driver’s license, vehicle registration, lease or purchase contract, repair tickets). Client was sent to the Google Form to upload. This Formspree email has no file attachments. Do NOT send engagement or fee-to-sign until the packet is in. Then explain fees; if they reply “I want to proceed”, send engagement for e-sign (TODO: no e-sign/portal in this repo — use existing recalde-portal or manual send). Signed engagement → open file.';
         }
       }
       if (subjectInput) subjectInput.value = subjectFor(status, subject);
@@ -920,18 +660,15 @@
       dateInput.setAttribute('min', '2000-01-01');
     }
 
-    var fileInput = form.querySelector('[data-intake-files]');
-    var fileList = form.querySelector('[data-file-list]');
-    if (fileInput && fileList) {
-      fileInput.addEventListener('change', function () {
-        var files = selectedFiles(form);
-        if (!files.length) {
-          fileList.hidden = true;
-          fileList.textContent = '';
-          return;
+    if (gformAck) {
+      gformAck.addEventListener('change', syncSubmitEnabled);
+    }
+    if (gformCta) {
+      gformCta.addEventListener('click', function () {
+        if (gformAck) {
+          gformAck.checked = true;
+          syncSubmitEnabled();
         }
-        fileList.hidden = false;
-        fileList.textContent = 'Selected: ' + describeFiles(files);
       });
     }
 
@@ -972,11 +709,13 @@
         return;
       }
       var panel = form.querySelector('[data-panel="' + step + '"]');
-      if (!validatePanel(panel)) return;
-      if (wantsUploadNow(form) && !selectedFiles(form).length) {
-        setError(form, UPLOAD_FAILED_MSG);
+      if (!openedGoogleForm(form)) {
+        setError(form, 'Please confirm you opened (or will complete) the Google Form, then submit your case review.');
+        if (gformAck && gformAck.reportValidity) gformAck.reportValidity();
+        syncSubmitEnabled();
         return;
       }
+      if (!validatePanel(panel)) return;
 
       var status = classifyWindow(form);
       if (status === 'out_of_window') {
@@ -994,16 +733,12 @@
       submitBtn.disabled = true;
       submitBtn.textContent = 'Sending…';
 
-      postLead(form).then(function (result) {
-        replaceWith(mount, successHtml(firstName(), vehicle(), {
-          requested: !!(result && result.filesRequested),
-          delivered: !!(result && result.filesDelivered),
-          names: result && result.names
-        }));
+      postLead(form).then(function () {
+        replaceWith(mount, successHtml(firstName(), vehicle()));
       }).catch(function (err) {
         submitting = false;
-        submitBtn.disabled = false;
         submitBtn.textContent = 'Submit my case review';
+        syncSubmitEnabled();
         setError(form, (err && err.message) || 'We couldn’t send your review just now. Please try again, or email rafael@recaldelaw.com with the same details.');
       });
     });
@@ -1020,15 +755,11 @@
     isFutureDate: isFutureDate,
     parseISODate: parseISODate,
     classifyWindow: classifyWindow,
-    describeFiles: describeFiles,
-    selectedFiles: selectedFiles,
-    fileDeliveryLine: fileDeliveryLine,
-    isHttpsDownloadUrl: isHttpsDownloadUrl,
-    firstHttpsUrl: firstHttpsUrl,
-    countHttpsUrls: countHttpsUrls,
-    hasDeliveredUrls: hasDeliveredUrls,
-    wantsUploadNow: wantsUploadNow,
-    UPLOAD_FAILED_MSG: UPLOAD_FAILED_MSG,
+    gatherDocs: gatherDocs,
+    openedGoogleForm: openedGoogleForm,
+    DOCS_GOOGLE_FORM: DOCS_GOOGLE_FORM,
+    DOCS_SEND_METHOD: DOCS_SEND_METHOD,
+    RIGHTS_MONTHS: RIGHTS_MONTHS,
     init: initMounts
   };
 

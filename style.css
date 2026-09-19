@@ -484,6 +484,28 @@ strong { font-weight: 700; color: var(--ink); }
   color: var(--text);
   margin-bottom: 8px;
 }
+.intake-docs-secure {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin: 0 0 12px;
+  color: var(--text);
+}
+a.intake-gform-cta {
+  margin: 4px 0 10px;
+  text-decoration: none;
+}
+.intake-gform-note {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0 0 14px;
+  line-height: 1.45;
+}
+.intake-form [data-submit][disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
 .intake-doc-list {
   margin: 0 0 14px 1.15em;
   padding: 0;
