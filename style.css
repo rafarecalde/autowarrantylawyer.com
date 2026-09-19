@@ -450,6 +450,12 @@ strong { font-weight: 700; color: var(--ink); }
 }
 .intake-actions .btn-block { flex: 1; }
 .intake-actions .intake-back { flex: 0 0 auto; min-width: 96px; }
+.intake-form [hidden],
+.intake-actions [hidden],
+.intake-panel[hidden],
+.intake-form .is-hidden {
+  display: none !important;
+}
 .intake-result {
   padding: 8px 0 4px;
 }

@@ -149,7 +149,7 @@
           '</div>' +
           '<div class="form-group">' +
             '<label for="' + fieldId(p, 'delivery_date') + '">Original delivery date</label>' +
-            '<input type="date" id="' + fieldId(p, 'delivery_date') + '" name="delivery_date">' +
+            '<input type="date" id="' + fieldId(p, 'delivery_date') + '" name="delivery_date" required>' +
             '<p class="intake-hint">The day you (or the first owner) took possession of the vehicle.</p>' +
           '</div>' +
           '<div class="form-group">' +
@@ -291,10 +291,12 @@
     });
   }
 
-  function validatePanel(panel) {
+  function validatePanel(panel, skipNames) {
+    var skip = skipNames || {};
     var fields = panelFields(panel);
     for (var i = 0; i < fields.length; i++) {
       var el = fields[i];
+      if (skip[el.name]) continue;
       if (!el.checkValidity()) {
         el.reportValidity();
         return false;
@@ -316,6 +318,7 @@
       return 'incomplete';
     }
 
+    if (dateInput && dateInput.validity && dateInput.validity.badInput) return 'bad_date';
     var iso = dateInput ? dateInput.value : '';
     if (!iso) return 'incomplete';
     if (isFutureDate(iso)) return 'future';
@@ -429,6 +432,9 @@
       backBtn.hidden = n === 1;
       nextBtn.hidden = n === total;
       submitBtn.hidden = n !== total;
+      backBtn.classList.toggle('is-hidden', n === 1);
+      nextBtn.classList.toggle('is-hidden', n === total);
+      submitBtn.classList.toggle('is-hidden', n !== total);
       nextBtn.classList.toggle('btn-block', n === 1);
       setError(form, '');
     }
@@ -490,12 +496,11 @@
 
     nextBtn.addEventListener('click', function () {
       var panel = form.querySelector('[data-panel="' + step + '"]');
-      if (!validatePanel(panel)) return;
-
       if (step === 1) {
+        if (!validatePanel(panel, { delivery_date: true, delivery_window_guess: true })) return;
         var status = classifyWindow(form);
-        if (status === 'incomplete') {
-          setError(form, 'Enter the original delivery date, or check the box and tell us whether it was within the last 24 months.');
+        if (status === 'incomplete' || status === 'bad_date') {
+          setError(form, 'Choose the original delivery date from the calendar, or check the box if you don’t have the exact date.');
           return;
         }
         if (status === 'future') {
@@ -507,6 +512,8 @@
           return;
         }
         applyStatus(status);
+      } else if (!validatePanel(panel)) {
+        return;
       }
 
       showPanel(step + 1);
@@ -519,6 +526,10 @@
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (submitting) return;
+      if (step !== total) {
+        nextBtn.click();
+        return;
+      }
       var panel = form.querySelector('[data-panel="' + step + '"]');
       if (!validatePanel(panel)) return;
 
@@ -527,7 +538,7 @@
         showDeclineAndSubmit();
         return;
       }
-      if (status === 'incomplete' || status === 'future') {
+      if (status === 'incomplete' || status === 'future' || status === 'bad_date') {
         showPanel(1);
         setError(form, 'Please confirm the original delivery date before submitting.');
         return;
