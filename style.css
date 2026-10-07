@@ -992,6 +992,24 @@ a.intake-gform-cta {
   color: #6B7588;
   line-height: 1.7;
 }
+.footer-cities {
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: 28px;
+  margin-bottom: 8px;
+}
+.footer-cities ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin: 0;
+}
+.footer-cities li { margin: 0; }
+.footer-cities-note {
+  margin-top: 14px;
+  font-size: 0.82rem;
+  color: #6B7588;
+  max-width: 760px;
+}
 .footer-bottom p { color: #6B7588; font-size: 0.82rem; }
 .footer-disclaimer {
   margin-top: 14px;
@@ -1109,6 +1127,77 @@ a.intake-gform-cta {
 }
 .article-cta h3 { color: var(--white); margin-bottom: 10px; }
 .article-cta p { color: #C3CBDA; margin-bottom: 20px; }
+
+.office-note {
+  background: var(--bg);
+  border-left: 4px solid var(--amber);
+  padding: 16px 20px;
+  margin: 28px 0;
+  border-radius: 0 8px 8px 0;
+}
+.office-note p:last-child { margin-bottom: 0; }
+
+.city-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  list-style: none;
+  max-width: 920px;
+  margin: 0 auto;
+}
+.city-pills a {
+  display: inline-block;
+  padding: 10px 16px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.city-pills a:hover { border-color: var(--amber); color: var(--ink); }
+
+.cr-wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--white);
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--line);
+}
+.cr-wrap .form-group { margin-bottom: 18px; }
+.cr-wrap label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.cr-wrap input,
+.cr-wrap select,
+.cr-wrap textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 1rem;
+  color: var(--text);
+  background: var(--white);
+  transition: var(--t);
+}
+.cr-wrap input:focus,
+.cr-wrap select:focus,
+.cr-wrap textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(30,106,229,.12);
+}
+.cr-wrap .intake-check input { width: auto; }
+.cr-note { font-size: 0.82rem; color: var(--muted); line-height: 1.6; margin-top: 18px; }
+@media (max-width: 640px) { .cr-wrap { padding: 28px 24px; } }
 
 /* ===== Utility ===== */
 .text-center { text-align: center; }
