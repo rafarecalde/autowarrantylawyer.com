@@ -1,7 +1,13 @@
 /**
  * Multi-step Florida Lemon Law intake.
  * Posts to the existing Formspree endpoint so current lead emails keep working.
- * Hard-screens Fla. Stat. § 681.102(9): rights period ends 24 months after original delivery.
+ * Screens Fla. Stat. § 681.102(9): the rights period ends 24 months after original delivery.
+ * A delivery date past that anniversary but still inside the 24–26 month band
+ * (60 days after the rights period ends, or the 26-month anniversary, whichever
+ * is later) is not an automatic decline. Fla. Stat. § 681.109(4) lets a claim
+ * that arose during the rights period go to the arbitration board up to 60 days
+ * after the period ends, so those leads continue for attorney review.
+ * Dates clearly past that band still decline.
  *
  * Locked funnel after a pass:
  *   1) Full document packet (DL, registration, lease/purchase, repair tickets)
@@ -29,6 +35,8 @@
   var DOCS_GOOGLE_FORM = 'https://docs.google.com/forms/d/e/1FAIpQLSei5FtsiCdXDqo9vn8Meu4mwtVosAs9VSMWX0OKjUOjwVWnKA/viewform';
   var DOCS_SEND_METHOD = 'Google Form offered (optional Drive)';
   var RIGHTS_MONTHS = 24;
+  var REVIEW_MONTHS = 26;
+  var ARBITRATION_GRACE_DAYS = 60;
 
   var US_STATES = [
     'Florida', 'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado',
@@ -68,17 +76,75 @@
     return y + '-' + m + '-' + day;
   }
 
+  function addDays(date, days) {
+    var next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  function addCalendarMonths(date, months) {
+    var next = new Date(date.getFullYear(), date.getMonth(), 1);
+    next.setMonth(next.getMonth() + months);
+    var lastDay = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+    next.setDate(Math.min(date.getDate(), lastDay));
+    return next;
+  }
+
   /**
    * Rights period ends on the 24-month anniversary of original delivery.
    * The anniversary date itself is still inside the window.
    */
-  function isOutsideRightsPeriod(isoDate, today) {
+  function rightsPeriodEnd(isoDate) {
     var delivery = parseISODate(isoDate);
     if (!delivery) return null;
     var end = new Date(delivery.getFullYear(), delivery.getMonth(), delivery.getDate());
     end.setFullYear(end.getFullYear() + 2);
+    return end;
+  }
+
+  function isOutsideRightsPeriod(isoDate, today) {
+    var end = rightsPeriodEnd(isoDate);
+    if (!end) return null;
     var ref = today || startOfToday();
     return ref.getTime() > end.getTime();
+  }
+
+  /**
+   * After the 24-month rights period, keep the lead for attorney review through
+   * the later of (a) 60 days after the rights period ends and (b) the 26-month
+   * anniversary. Sixty days is the arbitration filing deadline in
+   * Fla. Stat. § 681.109(4). The 26-month anniversary is that same band when
+   * the exact day count runs a day or two past two calendar months.
+   * The rights-period end date itself is still in-window, not attorney review.
+   */
+  function isAttorneyReviewWindow(isoDate, today) {
+    var delivery = parseISODate(isoDate);
+    var end = rightsPeriodEnd(isoDate);
+    if (!delivery || !end) return null;
+    var ref = today || startOfToday();
+    if (ref.getTime() <= end.getTime()) return false;
+    var sixtyDayDeadline = addDays(end, ARBITRATION_GRACE_DAYS);
+    var monthBandDeadline = addCalendarMonths(delivery, REVIEW_MONTHS);
+    var deadline = sixtyDayDeadline.getTime() > monthBandDeadline.getTime()
+      ? sixtyDayDeadline
+      : monthBandDeadline;
+    return ref.getTime() <= deadline.getTime();
+  }
+
+  function deliveryWindowStatus(isoDate, today) {
+    if (!parseISODate(isoDate)) return 'incomplete';
+    if (isFutureDate(isoDate, today)) return 'future';
+    if (isAttorneyReviewWindow(isoDate, today)) return 'attorney_review';
+    if (isOutsideRightsPeriod(isoDate, today)) return 'out_of_window';
+    return 'in_window';
+  }
+
+  function classifyGuess(guess) {
+    if (guess === 'More than 26 months ago') return 'out_of_window';
+    if (guess === 'About 24 to 26 months ago') return 'attorney_review';
+    if (guess === 'Not sure') return 'not_sure';
+    if (guess === 'Within the last 24 months') return 'in_window';
+    return 'incomplete';
   }
 
   function isFutureDate(isoDate, today) {
@@ -166,12 +232,13 @@
             '</label>' +
           '</div>' +
           '<div class="form-group" data-unknown-wrap hidden>' +
-            '<label for="' + fieldId(p, 'delivery_window_guess') + '">Was it delivered to the first owner within the last 24 months?</label>' +
+            '<label for="' + fieldId(p, 'delivery_window_guess') + '">When was it delivered to the first owner?</label>' +
             '<select id="' + fieldId(p, 'delivery_window_guess') + '" name="delivery_window_guess">' +
               '<option value="">Select...</option>' +
-              '<option value="Yes — within the last 24 months">Yes — within the last 24 months</option>' +
+              '<option value="Within the last 24 months">Within the last 24 months</option>' +
+              '<option value="About 24 to 26 months ago">About 24 to 26 months ago</option>' +
               '<option value="Not sure">Not sure</option>' +
-              '<option value="No — more than 24 months ago">No — more than 24 months ago</option>' +
+              '<option value="More than 26 months ago">More than 26 months ago</option>' +
             '</select>' +
           '</div>' +
         '</div>' +
@@ -183,8 +250,18 @@
               '<input type="text" id="' + fieldId(p, 'first_name') + '" name="first_name" autocomplete="given-name" required>' +
             '</div>' +
             '<div class="form-group">' +
+              '<label for="' + fieldId(p, 'last_name') + '">Last name</label>' +
+              '<input type="text" id="' + fieldId(p, 'last_name') + '" name="last_name" autocomplete="family-name" required>' +
+            '</div>' +
+          '</div>' +
+          '<div class="intake-row' + (compact ? ' intake-row-stack' : '') + '">' +
+            '<div class="form-group">' +
               '<label for="' + fieldId(p, 'email') + '">Email</label>' +
               '<input type="email" id="' + fieldId(p, 'email') + '" name="email" autocomplete="email" required>' +
+            '</div>' +
+            '<div class="form-group">' +
+              '<label for="' + fieldId(p, 'phone') + '">Phone number</label>' +
+              '<input type="tel" id="' + fieldId(p, 'phone') + '" name="phone" autocomplete="tel" inputmode="tel" required>' +
             '</div>' +
           '</div>' +
           '<div class="intake-row intake-row-3">' +
@@ -228,7 +305,7 @@
             '</div>' +
             '<div class="form-group">' +
               '<label for="' + fieldId(p, 'days_out_of_service') + '">Total days out of service</label>' +
-              '<input type="text" id="' + fieldId(p, 'days_out_of_service') + '" name="days_out_of_service" inputmode="numeric" placeholder="e.g. 15" required>' +
+              '<input type="text" id="' + fieldId(p, 'days_out_of_service') + '" name="days_out_of_service" inputmode="numeric" placeholder="e.g. 30" required>' +
             '</div>' +
           '</div>' +
           '<div class="form-group">' +
@@ -262,6 +339,25 @@
         '<p>Thank you for reaching out about your ' + escapeHtml(vehicle) + '.</p>' +
         '<p>Florida’s Lemon Law rights period generally ends 24 months after the vehicle’s original delivery date (Fla. Stat. § 681.102(9)). Based on what you shared, this matter falls outside that window.</p>' +
         '<p>If you have a different original delivery date, email <a href="mailto:rafael@recaldelaw.com">rafael@recaldelaw.com</a> with that date and the purchase or lease documents and we’ll take another look.</p>' +
+        '<p class="intake-signoff">Recalde Law Firm, P.A.<br>By: Rafael Recalde, Esq.</p>' +
+      '</div>'
+    );
+  }
+
+  function attorneyReviewHtml(firstName, vehicle) {
+    var greeting = firstName ? 'Hi ' + escapeHtml(firstName) + ',' : 'Hi,';
+    var about = vehicle && vehicle !== 'vehicle' ? ' about your ' + escapeHtml(vehicle) : '';
+    return (
+      '<div class="intake-result intake-result-ok" role="status">' +
+        '<p class="intake-result-kicker">Attorney review</p>' +
+        '<h3>An attorney will review the timing</h3>' +
+        '<p>' + greeting + '</p>' +
+        '<p>Your case review is in' + about + '.</p>' +
+        '<p>The 24-month Lemon Law rights period looks closed. A defect first reported during that period can still be submitted to the Florida New Motor Vehicle Arbitration Board for up to 60 days after the period ends (Fla. Stat. § 681.109(4)). An attorney will review whether this matter is still in that window.</p>' +
+        '<p>If you have repair orders showing when the defect was first reported, upload them with the rest of the packet.</p>' +
+        '<p>' + googleFormCta('Upload your packet') + '</p>' +
+        '<p class="intake-docs-secure">Files go to the firm securely.</p>' +
+        '<p class="intake-result-skip">Upload is optional. <a href="/">Back to home</a></p>' +
         '<p class="intake-signoff">Recalde Law Firm, P.A.<br>By: Rafael Recalde, Esq.</p>' +
       '</div>'
     );
@@ -328,19 +424,15 @@
     var guess = form.querySelector('select[name="delivery_window_guess"]');
 
     if (unknown && unknown.checked) {
-      var g = guess ? guess.value : '';
-      if (g === 'No — more than 24 months ago') return 'out_of_window';
-      if (g === 'Not sure') return 'not_sure';
-      if (g === 'Yes — within the last 24 months') return 'in_window';
-      return 'incomplete';
+      return classifyGuess(guess ? guess.value : '');
     }
 
     if (dateInput && dateInput.validity && dateInput.validity.badInput) return 'bad_date';
     var iso = dateInput ? dateInput.value : '';
     if (!iso) return 'incomplete';
-    if (isFutureDate(iso)) return 'future';
-    if (isOutsideRightsPeriod(iso)) return 'out_of_window';
-    return 'in_window';
+    var dated = deliveryWindowStatus(iso);
+    if (dated === 'incomplete') return 'bad_date';
+    return dated;
   }
 
   function compactStamp(now) {
@@ -362,11 +454,11 @@
    * Unique Gmail subject so Formspree leads do not thread together.
    * Shared subjects (e.g. "… (Hero Form)") caused later leads to vanish
    * into Trash with an earlier thread.
-   * Format: Auto Warranty Lawyer — Case Review — {first_name} — {year make model} — {timestamp}
+   * Format: Auto Warranty Lawyer — Case Review — {full name} — {year make model} — {timestamp}
    * form_source stays a separate posted field.
    */
   function uniqueLeadSubject(form, baseSubject, status, now) {
-    var name = formValue(form, 'first_name');
+    var name = [formValue(form, 'first_name'), formValue(form, 'last_name')].filter(Boolean).join(' ');
     var vehicle = [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' ');
     var parts = ['Auto Warranty Lawyer — Case Review'];
     if (name) parts.push(name);
@@ -374,6 +466,7 @@
     parts.push(compactStamp(now));
     var out = parts.join(' — ');
     if (status === 'out_of_window') return out + ' — Outside 24-month window';
+    if (status === 'attorney_review') return out + ' — Attorney review — 24–26 month window';
     if (status === 'not_sure') return out + ' — Delivery date not confirmed';
     return out;
   }
@@ -419,7 +512,7 @@
     data.delete('documents');
     data.delete('attachment');
     data.delete('vin');
-    data.set('name', formValue(form, 'first_name'));
+    data.set('name', [formValue(form, 'first_name'), formValue(form, 'last_name')].filter(Boolean).join(' '));
     data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
     data.set('uploaded_files', 'none — not attached to Formspree');
     data.set('form_source', formValue(form, 'form_source') || 'case-review');
@@ -512,7 +605,7 @@
       'Step 3 of 3 — Repair history'
     ];
     var leads = [
-      'A few questions, starting with the original delivery date. If you’re in the 24-month window, we’ll take the rest of the facts and you can submit.',
+      'A few questions, starting with the original delivery date. If you’re in the 24-month window, or in the 24-to-26-month band just after it, we’ll take the rest of the facts and you can submit.',
       'Your vehicle and how we can reach you.',
       'Repair visits, days out of service, and what’s going on. Then submit.'
     ];
@@ -583,6 +676,8 @@
       if (rightsInput) {
         if (status === 'out_of_window') {
           rightsInput.value = 'Outside 24-month Lemon Law Rights Period (Fla. Stat. § 681.102(9))';
+        } else if (status === 'attorney_review') {
+          rightsInput.value = 'Past the 24-month Lemon Law Rights Period but within the 24–26 month band — attorney review (Fla. Stat. § 681.109(4))';
         } else if (status === 'not_sure') {
           rightsInput.value = 'Delivery date not confirmed — needs follow-up';
         } else {
@@ -592,6 +687,8 @@
       if (nextStepInput) {
         if (status === 'out_of_window') {
           nextStepInput.value = 'Declined — do not request documents or send engagement.';
+        } else if (status === 'attorney_review') {
+          nextStepInput.value = 'Attorney review — 24–26 month band. Do not auto-decline. Do not send an engagement until counsel confirms the defect was first reported during the rights period and the 60-day arbitration filing window under Fla. Stat. § 681.109(4) is still open.';
         } else {
           nextStepInput.value = 'Lead in. VIN not collected. Packet optional via Drive form: driver’s license, vehicle registration, lease or purchase contract, repair tickets. This Formspree email has no file attachments. Do NOT send engagement or fee-to-sign until the packet is in. Then explain fees; if they reply “I want to proceed”, send engagement for e-sign (TODO: no e-sign/portal in this repo — use existing recalde-portal or manual send). Signed engagement → open file.';
         }
@@ -684,7 +781,10 @@
       submitBtn.textContent = 'Sending…';
 
       postLead(form).then(function () {
-        replaceWith(mount, successHtml(firstName(), vehicle()));
+        var done = status === 'attorney_review'
+          ? attorneyReviewHtml(firstName(), vehicle())
+          : successHtml(firstName(), vehicle());
+        replaceWith(mount, done);
       }).catch(function (err) {
         submitting = false;
         submitBtn.disabled = false;
@@ -702,6 +802,9 @@
 
   window.LemonIntake = {
     isOutsideRightsPeriod: isOutsideRightsPeriod,
+    isAttorneyReviewWindow: isAttorneyReviewWindow,
+    deliveryWindowStatus: deliveryWindowStatus,
+    classifyGuess: classifyGuess,
     isFutureDate: isFutureDate,
     parseISODate: parseISODate,
     classifyWindow: classifyWindow,
