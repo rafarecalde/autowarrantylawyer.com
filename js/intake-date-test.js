@@ -15,8 +15,16 @@ function extract(fnName) {
 }
 
 eval(extract('parseISODate'));
+eval(extract('addDays'));
+eval(extract('addCalendarMonths'));
+eval(extract('rightsPeriodEnd'));
 eval(extract('isOutsideRightsPeriod'));
+eval(extract('isAttorneyReviewWindow'));
 eval(extract('isFutureDate'));
+eval(extract('deliveryWindowStatus'));
+eval(extract('classifyGuess'));
+var ARBITRATION_GRACE_DAYS = 60;
+var REVIEW_MONTHS = 26;
 
 function d(y, m, day) {
   return new Date(y, m - 1, day);
@@ -44,6 +52,21 @@ assert('old delivery is out', isOutsideRightsPeriod('2023-09-01', d(2026, 9, 19)
 assert('invalid date', isOutsideRightsPeriod('2024-13-40', d(2026, 9, 19)), null);
 assert('future delivery', isFutureDate('2026-12-01', d(2026, 9, 19)), true);
 assert('today is not future', isFutureDate('2026-09-19', d(2026, 9, 19)), false);
+
+assert('anniversary is not attorney review', isAttorneyReviewWindow('2024-09-19', d(2026, 9, 19)), false);
+assert('day after anniversary is attorney review', isAttorneyReviewWindow('2024-09-19', d(2026, 9, 20)), true);
+assert('status on anniversary is in window', deliveryWindowStatus('2024-09-19', d(2026, 9, 19)), 'in_window');
+assert('status day after anniversary is attorney review', deliveryWindowStatus('2024-09-19', d(2026, 9, 20)), 'attorney_review');
+// 2024-01-01 + 24 months = 2026-01-01; + 60 days = 2026-03-02, which is later than the 26-month day (2026-03-01).
+assert('60th day after rights end stays in review', deliveryWindowStatus('2024-01-01', d(2026, 3, 2)), 'attorney_review');
+assert('day after 60-day deadline declines', deliveryWindowStatus('2024-01-01', d(2026, 3, 3)), 'out_of_window');
+// 2024-08-09 + 26 months = 2026-10-09, one day after the 60-day mark (2026-10-08).
+assert('26-month anniversary stays in review', deliveryWindowStatus('2024-08-09', d(2026, 10, 9)), 'attorney_review');
+assert('day after 26-month anniversary declines', deliveryWindowStatus('2024-08-09', d(2026, 10, 10)), 'out_of_window');
+assert('years-old delivery still declines', deliveryWindowStatus('2023-09-01', d(2026, 9, 19)), 'out_of_window');
+assert('guess in 24-26 band is attorney review', classifyGuess('About 24 to 26 months ago'), 'attorney_review');
+assert('guess past 26 months still declines', classifyGuess('More than 26 months ago'), 'out_of_window');
+assert('guess inside 24 months stays in window', classifyGuess('Within the last 24 months'), 'in_window');
 
 assert('step label comes before first panel', src.indexOf('data-step-label') < src.indexOf('data-panel="1"'), true);
 assert('delivery date is first step-1 field', src.indexOf('Original delivery date') < src.indexOf('First name'), true);
@@ -95,6 +118,12 @@ assert('required docs list includes registration', src.indexOf('Vehicle registra
 assert('required docs list includes contract', src.indexOf('Lease or purchase contract') !== -1, true);
 assert('required docs list includes repair tickets', src.indexOf('Repair tickets / repair orders') !== -1, true);
 assert('decline is a designed screen', src.indexOf('Outside the 24-month window') !== -1, true);
+assert('attorney review is a designed screen', src.indexOf('An attorney will review the timing') !== -1, true);
+assert('collects last name', src.indexOf('name="last_name"') !== -1 && src.indexOf('>Last name<') !== -1, true);
+assert('collects phone for callback', src.indexOf('name="phone"') !== -1 && src.indexOf('type="tel"') !== -1 && src.indexOf('>Phone number<') !== -1, true);
+assert('old more-than-24-months guess no longer auto-declines', src.indexOf('No — more than 24 months ago') === -1, true);
+assert('24-to-26-month guess exists', src.indexOf('About 24 to 26 months ago') !== -1, true);
+assert('more-than-26-months guess still declines', src.indexOf('More than 26 months ago') !== -1, true);
 assert('initial showPanel is silent', src.indexOf('showPanel(1, { silent: true })') !== -1, true);
 assertNo('no upload-failed fail-closed copy', src, 'Upload failed — email the packet to rafael@recaldelaw.com');
 
@@ -140,6 +169,24 @@ assert(
   'subject is name + vehicle + compact timestamp',
   uniqueLeadSubject(jane, 'Auto Warranty Lawyer — Case Review (Hero Form)', 'in_window', when),
   'Auto Warranty Lawyer — Case Review — Jane — 2025 Chevrolet Equinox — 2026-09-19 15:22:41 UTC'
+);
+var janeDoe = mockForm({
+  first_name: 'Jane',
+  last_name: 'Doe',
+  year: '2025',
+  make: 'Chevrolet',
+  model: 'Equinox',
+  form_source: 'homepage-hero'
+});
+assert(
+  'subject uses full name',
+  uniqueLeadSubject(janeDoe, '', 'in_window', when),
+  'Auto Warranty Lawyer — Case Review — Jane Doe — 2025 Chevrolet Equinox — 2026-09-19 15:22:41 UTC'
+);
+assert(
+  'attorney review subject marks the 24-26 month band',
+  uniqueLeadSubject(janeDoe, '', 'attorney_review', when),
+  'Auto Warranty Lawyer — Case Review — Jane Doe — 2025 Chevrolet Equinox — 2026-09-19 15:22:41 UTC — Attorney review — 24–26 month window'
 );
 assert(
   'subject ignores shared Hero Form base label',
