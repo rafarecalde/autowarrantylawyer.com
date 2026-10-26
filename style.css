@@ -954,7 +954,7 @@ a.intake-gform-cta {
 }
 .footer-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
   gap: 40px;
   margin-bottom: 40px;
 }
@@ -1203,3 +1203,31 @@ a.intake-gform-cta {
 .text-center { text-align: center; }
 .mt-0 { margin-top: 0; }
 .mb-0 { margin-bottom: 0; }
+
+/* ===== Vehicles dropdown ===== */
+.nav-dd { position: relative; }
+.nav-dd-toggle::after { content: ' \25BE'; font-size: 0.8em; }
+.nav-dd-menu {
+  list-style: none; position: absolute; top: 100%; left: -16px; min-width: 260px;
+  background: var(--white); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow-md); padding: 8px 0; display: none; z-index: 200;
+}
+.nav-dd:hover .nav-dd-menu, .nav-dd:focus-within .nav-dd-menu { display: block; }
+.nav-dd-menu a { display: block; padding: 9px 18px; white-space: nowrap; font-size: 0.95rem; }
+@media (max-width: 880px) {
+  .nav-dd-menu { position: static; display: block; box-shadow: none; border: none; padding: 0 0 8px 14px; min-width: 0; }
+  .nav-dd-menu a { padding: 8px 0; white-space: normal; }
+  .nav-links.open { max-height: 900px; }
+}
+/* ===== Vehicles we handle grid ===== */
+.vehicle-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 1040px; margin: 0 auto; }
+.vehicle-tile {
+  display: block; background: var(--white); border: 1.5px solid var(--line); border-radius: 12px;
+  padding: 20px; color: var(--ink); transition: border-color .15s, transform .15s;
+}
+.vehicle-tile:hover { border-color: var(--amber); transform: translateY(-2px); color: var(--ink); }
+.vehicle-tile strong { display: block; font-family: 'Archivo', sans-serif; font-size: 1.1rem; color: var(--navy); margin-bottom: 4px; }
+.vehicle-tile span { color: var(--muted); font-size: 0.88rem; }
+.vehicle-note { text-align: center; color: var(--muted); font-size: 0.9rem; margin-top: 20px; }
+@media (max-width: 880px) { .vehicle-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .vehicle-grid { grid-template-columns: 1fr; } }
