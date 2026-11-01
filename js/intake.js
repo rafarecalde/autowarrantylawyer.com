@@ -195,6 +195,7 @@
     var p = opts.idPrefix;
     var compact = !!opts.compact;
     var source = opts.source || 'case-review';
+    var sourcePage = opts.sourcePage || '';
     var yearId = fieldId(p, 'year');
     var makeId = fieldId(p, 'make');
     var modelId = fieldId(p, 'model');
@@ -203,6 +204,7 @@
       '<form action="' + FORMSPREE_ENDPOINT + '" method="POST" class="intake-form" data-intake novalidate>' +
         '<input type="hidden" name="_subject" value="">' +
         '<input type="hidden" name="form_source" value="' + escapeAttr(source) + '">' +
+        '<input type="hidden" name="source_page" value="' + escapeAttr(sourcePage) + '">' +
         '<input type="hidden" name="intake_status" value="">' +
         '<input type="hidden" name="rights_period_status" value="">' +
         '<input type="hidden" name="next_step" value="">' +
@@ -452,15 +454,15 @@
 
   /**
    * Unique Gmail subject so Formspree leads do not thread together.
-   * Shared subjects (e.g. "… (Hero Form)") caused later leads to vanish
-   * into Trash with an earlier thread.
-   * Format: Auto Warranty Lawyer — Case Review — {full name} — {year make model} — {timestamp}
-   * form_source stays a separate posted field.
+   * A shared subject (for example a bare "Lemon Law Inquiry — autowarrantylawyer.com")
+   * caused later leads to vanish into Trash with an earlier thread.
+   * Format: Lemon Law Inquiry — autowarrantylawyer.com — {full name} — {year make model} — {timestamp}
+   * form_source and source_page stay separate posted fields.
    */
   function uniqueLeadSubject(form, baseSubject, status, now) {
     var name = [formValue(form, 'first_name'), formValue(form, 'last_name')].filter(Boolean).join(' ');
     var vehicle = [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' ');
-    var parts = ['Auto Warranty Lawyer — Case Review'];
+    var parts = ['Lemon Law Inquiry — autowarrantylawyer.com'];
     if (name) parts.push(name);
     if (vehicle) parts.push(vehicle);
     parts.push(compactStamp(now));
@@ -516,6 +518,12 @@
     data.set('vehicle', [formValue(form, 'year'), formValue(form, 'make'), formValue(form, 'model')].filter(Boolean).join(' '));
     data.set('uploaded_files', 'none — not attached to Formspree');
     data.set('form_source', formValue(form, 'form_source') || 'case-review');
+    var sourcePage = formValue(form, 'source_page');
+    if (!sourcePage && typeof window !== 'undefined' && window.location) {
+      sourcePage = window.location.pathname || '/';
+      if (sourcePage === '/index.html') sourcePage = '/';
+    }
+    data.set('source_page', sourcePage || '/');
     data.set('_subject', uniqueLeadSubject(form, '', formValue(form, 'intake_status')));
 
     if (formValue(form, 'intake_status') === 'out_of_window') {
@@ -586,10 +594,16 @@
     var prefix = mount.getAttribute('data-id-prefix') || 'intake';
     var source = mount.getAttribute('data-intake-source') || 'case-review';
     var compact = mount.getAttribute('data-compact') === 'true';
+    var sourcePage = mount.getAttribute('data-source-page');
+    if (!sourcePage) {
+      sourcePage = window.location.pathname || '/';
+      if (sourcePage === '/index.html') sourcePage = '/';
+    }
 
     mount.innerHTML = buildFormHtml({
       idPrefix: prefix,
       source: source,
+      sourcePage: sourcePage,
       compact: compact
     });
 
@@ -781,6 +795,9 @@
       submitBtn.textContent = 'Sending…';
 
       postLead(form).then(function () {
+        if (typeof window.gtag_report_conversion === 'function') {
+          window.gtag_report_conversion();
+        }
         var done = status === 'attorney_review'
           ? attorneyReviewHtml(firstName(), vehicle())
           : successHtml(firstName(), vehicle());
