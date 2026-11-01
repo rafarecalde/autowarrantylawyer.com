@@ -15,12 +15,22 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Google tag (gtag.js) — GA4 + Google Ads -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F983DQ22DR"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-F983DQ22DR');
+    gtag('config', 'AW-1020943370');
+  </script>
+  <script src="/js/google-tags.js"></script>
 </head>
 <body>
 
   <div class="callbar">
     <strong>Florida Lemon Law Hotline:</strong> <a href="tel:+18662955347">(866) 295-5347</a>
-    <span class="callbar-sep">|</span> <a href="/case-review/">Start your case review</a> <span class="callbar-sep">|</span> No Recovery, No Fee
+    <span class="callbar-sep">|</span> <a href="#case-review">Start your case review</a> <span class="callbar-sep">|</span> No Recovery, No Fee
   </div>
 
   <nav class="nav" id="nav">
@@ -42,7 +52,7 @@
         </li>
         <li><a href="/how-it-works/">How It Works</a></li>
         <li><a href="/blog/">Articles</a></li>
-        <li><a href="/case-review/" class="btn-nav">Start your case review</a></li>
+        <li><a href="#case-review" class="btn-nav">Start your case review</a></li>
       </ul>
     </div>
   </nav>
@@ -61,7 +71,7 @@
       <div class="article-content">
         <p>Florida's Motor Vehicle Warranty Enforcement Act, codified at Chapter 681 of the Florida Statutes, is one of the strongest consumer protection laws in the country. It exists for a simple reason: when a consumer pays for a new vehicle, the vehicle should work. If it doesn't — and the manufacturer can't fix it after a reasonable number of attempts — Florida law requires the manufacturer to either replace the vehicle or refund the purchase price.</p>
 
-        <p>This page walks through how the Florida Lemon Law actually works: what vehicles qualify, how the presumption of "nonconformity" is triggered, what you can recover, and the procedural steps required before a consumer can pursue a buyback or replacement. If after reading this you believe your vehicle may qualify, <a href="/case-review/">request a free case review</a>.</p>
+        <p>This page walks through how the Florida Lemon Law actually works: what vehicles qualify, how the presumption of "nonconformity" is triggered, what you can recover, and the procedural steps required before a consumer can pursue a buyback or replacement. If after reading this you believe your vehicle may qualify, <a href="#case-review">request a free case review</a>.</p>
 
         <h2>What Vehicles Are Covered</h2>
 
@@ -160,22 +170,45 @@
           <li><a href="/naples-lemon-law-florida/">Naples lemon law attorney</a></li>
           <li><a href="/tallahassee-lemon-law-florida/">Tallahassee lemon law attorney</a></li>
         </ul>
-        <p>Representation is for new vehicles purchased or leased in Florida. If you are ready for an evaluation, <a href="/case-review/">start a case review</a>.</p>
+        <p>Representation is for new vehicles purchased or leased in Florida. If you are ready for an evaluation, <a href="#case-review">start a case review</a> or call <a href="tel:+18662955347">(866) 295-5347</a>.</p>
 
         <div class="article-cta">
           <h3>Think your new vehicle qualifies?</h3>
           <p>Start a case review. No recovery, no fee. Florida only.</p>
-          <a href="/case-review/" class="btn btn-primary btn-lg">Start your case review</a>
+          <a href="#case-review" class="btn btn-primary btn-lg">Start your case review</a>
+          <a href="tel:+18662955347" class="btn btn-outline-light btn-lg">Call (866) 295-5347</a>
         </div>
       </div>
     </div>
   </article>
 
+  <section class="section section-alt" id="case-review">
+    <div class="container">
+      <h2 class="section-heading">Start your case review</h2>
+      <p class="section-intro">Tell us who you are, how to reach you, the vehicle year, make, and model, and what’s wrong with it. You can also call <a href="tel:+18662955347">(866) 295-5347</a>. Submitting the form does not create an attorney-client relationship.</p>
+      <div class="cr-wrap">
+        <p style="margin-top:0;color:var(--muted);font-size:0.95rem;" data-intake-lead>A few questions, starting with the original delivery date. If you’re in the 24-month window, or in the 24-to-26-month band just after it, we’ll take the rest of the facts and you can submit.</p>
+        <div
+          data-intake-mount
+          data-id-prefix="fll"
+          data-intake-source="florida-lemon-law"
+          data-source-page="/florida-lemon-law/"
+        ></div>
+        <noscript>
+          <p class="cr-note">To start a case review, email <a href="mailto:rafael@recaldelaw.com">rafael@recaldelaw.com</a> with your full name, phone number, vehicle year/make/model, a short description of the defects, and copies of your contract and repair orders.</p>
+        </noscript>
+      </div>
+    </div>
+  </section>
+
   <section class="cta-strip">
     <div class="container">
       <div class="cta-strip-inner">
         <h2>Ready to talk? Call (866) 295-5347 or send your case online.</h2>
-        <a href="/case-review/" class="btn btn-dark btn-lg">Start your case review →</a>
+        <div class="hero-cta" style="margin:0;">
+          <a href="tel:+18662955347" class="btn btn-dark btn-lg">Call (866) 295-5347</a>
+          <a href="#case-review" class="btn btn-dark btn-lg">Start your case review →</a>
+        </div>
       </div>
     </div>
   </section>
@@ -267,5 +300,6 @@
       nav.classList.toggle('scrolled', window.scrollY > 20);
     });
   </script>
+  <script src="/js/intake.js?v=ads-conversion"></script>
 </body>
 </html>

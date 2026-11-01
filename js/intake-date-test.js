@@ -99,7 +99,9 @@ assert('awkward upload-only fragment is not in intake.js', src.indexOf('upload o
 assert('Formspree _subject is unique per lead', src.indexOf('function uniqueLeadSubject') !== -1 && src.indexOf("data.set('_subject'") !== -1, true);
 assert('form_source is kept as a posted field', src.indexOf('name="form_source"') !== -1 && src.indexOf("data.set('form_source'") !== -1, true);
 assert('initial _subject is empty until submit', src.indexOf('name="_subject" value=""') !== -1, true);
-assert('Gmail subject format uses name and vehicle', src.indexOf('Auto Warranty Lawyer — Case Review') !== -1 && src.indexOf("parts.push(name)") !== -1 && src.indexOf('parts.push(vehicle)') !== -1 && src.indexOf('compactStamp') !== -1, true);
+assert('Gmail subject format uses name and vehicle', src.indexOf('Lemon Law Inquiry — autowarrantylawyer.com') !== -1 && src.indexOf("parts.push(name)") !== -1 && src.indexOf('parts.push(vehicle)') !== -1 && src.indexOf('compactStamp') !== -1, true);
+assert('source_page is a posted hidden field', src.indexOf('name="source_page"') !== -1 && src.indexOf("data.set('source_page'") !== -1, true);
+assert('successful submit reports an Ads conversion', src.indexOf('gtag_report_conversion') !== -1, true);
 assert('Google Form opens in a new tab', src.indexOf('target="_blank"') !== -1 && src.indexOf('data-gform-cta') !== -1, true);
 assert('three on-site steps', src.indexOf('var total = 3') !== -1 && src.indexOf('data-panel="4"') === -1, true);
 assert('step 1 label is delivery date', src.indexOf('Step 1 of 3 — Delivery date') !== -1, true);
@@ -168,7 +170,7 @@ var jane = mockForm({
 assert(
   'subject is name + vehicle + compact timestamp',
   uniqueLeadSubject(jane, 'Auto Warranty Lawyer — Case Review (Hero Form)', 'in_window', when),
-  'Auto Warranty Lawyer — Case Review — Jane — 2025 Chevrolet Equinox — 2026-09-19 15:22:41 UTC'
+  'Lemon Law Inquiry — autowarrantylawyer.com — Jane — 2025 Chevrolet Equinox — 2026-09-19 15:22:41 UTC'
 );
 var janeDoe = mockForm({
   first_name: 'Jane',
@@ -181,12 +183,12 @@ var janeDoe = mockForm({
 assert(
   'subject uses full name',
   uniqueLeadSubject(janeDoe, '', 'in_window', when),
-  'Auto Warranty Lawyer — Case Review — Jane Doe — 2025 Chevrolet Equinox — 2026-09-19 15:22:41 UTC'
+  'Lemon Law Inquiry — autowarrantylawyer.com — Jane Doe — 2025 Chevrolet Equinox — 2026-09-19 15:22:41 UTC'
 );
 assert(
   'attorney review subject marks the 24-26 month band',
   uniqueLeadSubject(janeDoe, '', 'attorney_review', when),
-  'Auto Warranty Lawyer — Case Review — Jane Doe — 2025 Chevrolet Equinox — 2026-09-19 15:22:41 UTC — Attorney review — 24–26 month window'
+  'Lemon Law Inquiry — autowarrantylawyer.com — Jane Doe — 2025 Chevrolet Equinox — 2026-09-19 15:22:41 UTC — Attorney review — 24–26 month window'
 );
 assert(
   'subject ignores shared Hero Form base label',
@@ -203,7 +205,7 @@ var empty = mockForm({});
 assert(
   'subject is still unique without name or vehicle',
   uniqueLeadSubject(empty, '', 'out_of_window', when),
-  'Auto Warranty Lawyer — Case Review — 2026-09-19 15:22:41 UTC — Outside 24-month window'
+  'Lemon Law Inquiry — autowarrantylawyer.com — 2026-09-19 15:22:41 UTC — Outside 24-month window'
 );
 
 if (failed) {

@@ -1127,6 +1127,10 @@ a.intake-gform-cta {
 }
 .article-cta h3 { color: var(--white); margin-bottom: 10px; }
 .article-cta p { color: #C3CBDA; margin-bottom: 20px; }
+.article-cta .btn + .btn { margin-left: 12px; }
+@media (max-width: 640px) {
+  .article-cta .btn + .btn { margin-left: 0; margin-top: 12px; }
+}
 
 .office-note {
   background: var(--bg);

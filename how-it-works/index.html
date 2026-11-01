@@ -15,12 +15,22 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Google tag (gtag.js) — GA4 + Google Ads -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-F983DQ22DR"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-F983DQ22DR');
+    gtag('config', 'AW-1020943370');
+  </script>
+  <script src="/js/google-tags.js"></script>
 </head>
 <body>
 
   <div class="callbar">
     <strong>Florida Lemon Law Hotline:</strong> <a href="tel:+18662955347">(866) 295-5347</a>
-    <span class="callbar-sep">|</span> <a href="/case-review/">Start your case review</a> <span class="callbar-sep">|</span> No Recovery, No Fee
+    <span class="callbar-sep">|</span> <a href="#case-review">Start your case review</a> <span class="callbar-sep">|</span> No Recovery, No Fee
   </div>
 
   <nav class="nav" id="nav">
@@ -42,7 +52,7 @@
         </li>
         <li><a href="/how-it-works/">How It Works</a></li>
         <li><a href="/blog/">Articles</a></li>
-        <li><a href="/case-review/" class="btn-nav">Start your case review</a></li>
+        <li><a href="#case-review" class="btn-nav">Start your case review</a></li>
       </ul>
     </div>
   </nav>
@@ -65,7 +75,7 @@
 
         <h2>Step 1 — Case Review</h2>
 
-        <p>You <a href="/case-review/">start a case review</a>. We’ll ask for the original delivery date first. Florida’s Lemon Law rights period generally ends 24 months after that date (Fla. Stat. § 681.102(9)). If you’re clearly past that window — more than about 26 months after delivery — we say so before asking for more facts. If the date falls in the 24-to-26-month band, we still collect the facts for attorney review. A defect first reported during the rights period can be taken to the state arbitration board for up to 60 days after the period ends (Fla. Stat. § 681.109(4)). If you’re inside the 24-month window, we collect vehicle and contact details, a short repair history, and you submit.</p>
+        <p>You <a href="#case-review">start a case review</a>. We’ll ask for the original delivery date first. Florida’s Lemon Law rights period generally ends 24 months after that date (Fla. Stat. § 681.102(9)). If you’re clearly past that window — more than about 26 months after delivery — we say so before asking for more facts. If the date falls in the 24-to-26-month band, we still collect the facts for attorney review. A defect first reported during the rights period can be taken to the state arbitration board for up to 60 days after the period ends (Fla. Stat. § 681.109(4)). If you’re inside the 24-month window, we collect vehicle and contact details, a short repair history, and you submit.</p>
 
         <p>The review is free. If the date is clearly past the filing window, we stop there. If it looks in-window, or it needs attorney review because it is in the 24-to-26-month band, you submit the facts first. After that, you can upload your document packet.</p>
 
@@ -121,18 +131,41 @@
 
         <div class="article-cta">
           <h3>Ready to find out if you have a case?</h3>
-          <p>It takes 3 minutes. No cost. No obligation.</p>
-          <a href="/case-review/" class="btn btn-primary btn-lg">Start your case review</a>
+          <p>It takes 3 minutes. No cost. No obligation. You can also call <a href="tel:+18662955347">(866) 295-5347</a>.</p>
+          <a href="#case-review" class="btn btn-primary btn-lg">Start your case review</a>
+          <a href="tel:+18662955347" class="btn btn-outline-light btn-lg">Call (866) 295-5347</a>
         </div>
       </div>
     </div>
   </article>
 
+  <section class="section section-alt" id="case-review">
+    <div class="container">
+      <h2 class="section-heading">Start your case review</h2>
+      <p class="section-intro">Tell us who you are, how to reach you, the vehicle year, make, and model, and what’s wrong with it. You can also call <a href="tel:+18662955347">(866) 295-5347</a>. Submitting the form does not create an attorney-client relationship.</p>
+      <div class="cr-wrap">
+        <p style="margin-top:0;color:var(--muted);font-size:0.95rem;" data-intake-lead>A few questions, starting with the original delivery date. If you’re in the 24-month window, or in the 24-to-26-month band just after it, we’ll take the rest of the facts and you can submit.</p>
+        <div
+          data-intake-mount
+          data-id-prefix="hiw"
+          data-intake-source="how-it-works"
+          data-source-page="/how-it-works/"
+        ></div>
+        <noscript>
+          <p class="cr-note">To start a case review, email <a href="mailto:rafael@recaldelaw.com">rafael@recaldelaw.com</a> with your full name, phone number, vehicle year/make/model, a short description of the defects, and copies of your contract and repair orders.</p>
+        </noscript>
+      </div>
+    </div>
+  </section>
+
   <section class="cta-strip">
     <div class="container">
       <div class="cta-strip-inner">
         <h2>Ready to find out if you have a case?</h2>
-        <a href="/case-review/" class="btn btn-dark btn-lg">Start your case review →</a>
+        <div class="hero-cta" style="margin:0;">
+          <a href="tel:+18662955347" class="btn btn-dark btn-lg">Call (866) 295-5347</a>
+          <a href="#case-review" class="btn btn-dark btn-lg">Start your case review →</a>
+        </div>
       </div>
     </div>
   </section>
@@ -224,5 +257,6 @@
       nav.classList.toggle('scrolled', window.scrollY > 20);
     });
   </script>
+  <script src="/js/intake.js?v=ads-conversion"></script>
 </body>
 </html>
